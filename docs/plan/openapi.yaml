@@ -1,0 +1,3565 @@
+openapi: 3.0.3
+info:
+  title: 众享拼 API
+  version: 0.2.0
+  description: 众享拼 P0 接口契约。本文档是前后端、Mock、后端 DTO 和验收用例的共同依据。
+servers:
+  - url: http://localhost:8091
+    description: 本地开发服务
+tags:
+  - name: 健康检查
+    description: 应用、数据库和 Redis 健康状态
+  - name: 认证
+    description: 用户注册、登录、验证码、当前用户和登出
+  - name: 会场
+    description: 会场活动、商品详情和活动试算
+  - name: 交易
+    description: 锁单、Mock 支付和退款
+  - name: 订单
+    description: 当前用户订单查询
+  - name: 后台-订单
+    description: 管理端订单查询和退款治理
+  - name: 后台-任务
+    description: 可靠事件、通知和补偿任务治理
+  - name: 后台-活动
+    description: 活动配置、启停和 SKU 绑定
+  - name: 后台-标签
+    description: 标签任务、执行和命中检查
+  - name: 后台-配置
+    description: DCC、线程池和审计日志
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - 健康检查
+      summary: 查询健康状态
+      description: 本地和部署环境用于确认应用、数据库和 Redis 是否可用。
+      security: []
+      responses:
+        "200":
+          description: 健康状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthApiResponse"
+              examples:
+                success:
+                  summary: 服务健康
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-health-001
+                    data:
+                      app: UP
+                      db: UP
+                      redis: UP
+                      profile: local
+
+  /api/v1/auth/register:
+    post:
+      tags:
+        - 认证
+      summary: 用户注册
+      description: 注册普通用户。用户名、手机号必须满足唯一约束，密码只允许在服务端保存 bcrypt hash。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            examples:
+              normal:
+                summary: 用户名密码注册
+                value:
+                  username: user001
+                  password: Zxp123456
+                  phone: "13800000001"
+      responses:
+        "200":
+          description: 注册成功并返回登录态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AuthSessionSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/auth/code:
+    post:
+      tags:
+        - 认证
+      summary: 发送验证码
+      description: 向手机号发送验证码。本地 profile 可返回 mockCode，非本地环境不得返回验证码明文。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendCodeRequest"
+            examples:
+              normal:
+                value:
+                  phone: "13800000001"
+                  purpose: LOGIN
+      responses:
+        "200":
+          description: 验证码发送结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendCodeApiResponse"
+              examples:
+                local:
+                  summary: 本地环境返回 mockCode
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-auth-code-001
+                    data:
+                      sent: true
+                      ttlSeconds: 300
+                      mockCode: "123456"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/auth/login/password:
+    post:
+      tags:
+        - 认证
+      summary: 密码登录
+      description: 使用用户名或手机号登录。禁用账号和密码错误必须返回稳定错误码。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordLoginRequest"
+            examples:
+              normal:
+                value:
+                  account: user001
+                  password: Zxp123456
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AuthSessionSuccess"
+        "400":
+          description: 登录失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                badCredentials:
+                  $ref: "#/components/examples/AuthBadCredentials"
+
+  /api/v1/auth/login/code:
+    post:
+      tags:
+        - 认证
+      summary: 验证码登录
+      description: 手机号不存在时可创建轻量账号；验证码使用后必须失效。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CodeLoginRequest"
+            examples:
+              normal:
+                value:
+                  phone: "13800000001"
+                  code: "123456"
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AuthSessionSuccess"
+        "400":
+          description: 验证码错误或过期
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                codeInvalid:
+                  value:
+                    code: AUTH_CODE_INVALID
+                    message: 验证码错误或已过期
+                    data: null
+                    traceId: trace-auth-err-002
+
+  /api/v1/auth/me:
+    get:
+      tags:
+        - 认证
+      summary: 查询当前用户
+      description: 当前用户只来自服务端登录态，前端传入 userId 不可信。
+      responses:
+        "200":
+          description: 当前用户
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUserApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-auth-me-001
+                    data:
+                      userId: 10001
+                      username: user001
+                      phone: "13800000001"
+                      role: USER
+                      status: ENABLED
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - 认证
+      summary: 登出
+      description: 清理当前登录态。
+      responses:
+        "200":
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-auth-logout-001
+                    data: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/market/activities:
+    get:
+      tags:
+        - 会场
+      summary: 查询会场活动列表
+      description: 一次返回商品、活动、拼团价、统计和可参团队伍摘要，避免前端自行拼装复杂业务数据。
+      parameters:
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Source"
+        - $ref: "#/components/parameters/Channel"
+        - name: category
+          in: query
+          required: false
+          description: 商品分类
+          schema:
+            type: string
+            example: food
+      responses:
+        "200":
+          description: 会场分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketActivityPageApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/MarketActivityPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/market/activities/{activityId}:
+    get:
+      tags:
+        - 会场
+      summary: 查询活动详情
+      description: 返回商品详情、活动配置和可参团队伍，详情页进入后仍需调用试算接口确认价格和资格。
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+        - $ref: "#/components/parameters/Source"
+        - $ref: "#/components/parameters/Channel"
+      responses:
+        "200":
+          description: 活动详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketActivityDetailApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-market-detail-001
+                    data:
+                      activity:
+                        activityId: 20001
+                        skuId: 30001
+                        title: 端午粽子双人拼团
+                        source: APP
+                        channel: H5
+                        status: ACTIVE
+                        targetCount: 2
+                        validMinutes: 30
+                        startTime: "2026-05-25T09:00:00+08:00"
+                        endTime: "2026-06-01T23:59:59+08:00"
+                        version: 3
+                      goods:
+                        skuId: 30001
+                        name: 桂花豆沙粽礼盒
+                        imageUrl: https://example.com/sku/30001.png
+                        category: food
+                        originalPriceCent: 9900
+                      price:
+                        originalPriceCent: 9900
+                        discountCent: 2000
+                        payPriceCent: 7900
+                      statistics:
+                        completeTeamCount: 18
+                        processingTeamCount: 6
+                        paidOrderCount: 42
+                      topTeams:
+                        - teamId: TEAM-20260525-001
+                          activityId: 20001
+                          status: PROGRESS
+                          targetCount: 2
+                          completeCount: 1
+                          lockCount: 0
+                          remainCount: 1
+                          expireTime: "2026-05-25T10:30:00+08:00"
+        "404":
+          $ref: "#/components/responses/MarketNotFound"
+
+  /api/v1/market/trials:
+    post:
+      tags:
+        - 会场
+      summary: 活动试算
+      description: 校验活动、渠道、时间、标签和限购，返回价格快照和可参团队伍。锁单前后端必须重新试算，不能信任前端价格。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrialRequest"
+            examples:
+              normal:
+                value:
+                  activityId: 20001
+                  skuId: 30001
+                  source: APP
+                  channel: H5
+                  joinTeamId: TEAM-20260525-001
+      responses:
+        "200":
+          description: 试算成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrialApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TrialSuccess"
+        "400":
+          description: 活动不可用或标签未命中
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                tagNotMatched:
+                  value:
+                    code: MARKET_TAG_NOT_MATCHED
+                    message: 当前用户不满足活动人群要求
+                    data:
+                      activityId: 20001
+                      tagId: TAG-VIP-001
+                    traceId: trace-market-err-001
+
+  /api/v1/trade/orders/lock:
+    post:
+      tags:
+        - 交易
+      summary: 锁单
+      description: 开团或参团创建 WAIT_PAY 订单。后端以登录态 userId 为准，并使用 userId + clientOrderNo 幂等。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LockOrderRequest"
+            examples:
+              createTeam:
+                summary: 开团锁单
+                value:
+                  clientOrderNo: CLIENT-20260525-0001
+                  activityId: 20001
+                  skuId: 30001
+                  source: APP
+                  channel: H5
+              joinTeam:
+                summary: 参团锁单
+                value:
+                  clientOrderNo: CLIENT-20260525-0002
+                  activityId: 20001
+                  skuId: 30001
+                  teamId: TEAM-20260525-001
+                  source: APP
+                  channel: H5
+      responses:
+        "200":
+          description: 锁单成功或幂等返回已有订单
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockOrderApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/LockOrderSuccess"
+                replay:
+                  summary: 重复 clientOrderNo 幂等返回
+                  value:
+                    code: TRADE_IDEMPOTENT_REPLAY
+                    message: 重复请求，返回已有订单
+                    traceId: trace-trade-lock-002
+                    data:
+                      orderId: ORD-20260525-0001
+                      clientOrderNo: CLIENT-20260525-0001
+                      teamId: TEAM-20260525-001
+                      orderStatus: WAIT_PAY
+                      teamStatus: PROGRESS
+                      payPriceCent: 7900
+                      payDeadline: "2026-05-25T10:15:00+08:00"
+                      canPay: true
+        "400":
+          description: 锁单失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                teamFull:
+                  value:
+                    code: TRADE_TEAM_FULL
+                    message: 当前队伍已满
+                    data:
+                      teamId: TEAM-20260525-001
+                    traceId: trace-trade-err-001
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/trade/payments/mock:
+    post:
+      tags:
+        - 交易
+      summary: Mock 支付结算
+      description: 本地和 P0 演示使用的支付结算接口。使用 payNo 幂等，只允许 WAIT_PAY 订单进入 PAID。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MockPayRequest"
+            examples:
+              normal:
+                value:
+                  orderId: ORD-20260525-0001
+                  payNo: PAY-20260525-0001
+      responses:
+        "200":
+          description: 支付成功或幂等返回支付结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/PaymentSuccess"
+                replay:
+                  summary: 重复 payNo 幂等返回
+                  value:
+                    code: TRADE_IDEMPOTENT_REPLAY
+                    message: 重复请求，返回已有支付结果
+                    traceId: trace-pay-002
+                    data:
+                      orderId: ORD-20260525-0001
+                      payNo: PAY-20260525-0001
+                      orderStatus: PAID
+                      teamStatus: COMPLETE
+                      paidAt: "2026-05-25T10:02:00+08:00"
+                      completed: true
+        "400":
+          $ref: "#/components/responses/TradeInvalidStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/trade/refunds:
+    post:
+      tags:
+        - 交易
+      summary: 用户退款
+      description: 当前用户对自己的 PAID 订单发起退款。使用 refundNo 幂等，退款来源为 USER。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRefundRequest"
+            examples:
+              normal:
+                value:
+                  orderId: ORD-20260525-0001
+                  refundNo: RF-20260525-0001
+                  reason: 用户主动退款
+      responses:
+        "200":
+          description: 退款成功或幂等返回退款结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/RefundSuccess"
+        "400":
+          $ref: "#/components/responses/TradeInvalidStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/orders:
+    get:
+      tags:
+        - 订单
+      summary: 查询当前用户订单列表
+      description: 只查询当前登录用户订单，不能通过请求参数传入可信 userId。
+      parameters:
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          required: false
+          description: 订单状态筛选
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: 当前用户订单分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderPageApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/OrderPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/orders/{orderId}:
+    get:
+      tags:
+        - 订单
+      summary: 查询当前用户订单详情
+      description: 必须校验订单归属，禁止水平越权。
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: 订单详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetailApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/OrderDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/OrderNotFound"
+
+  /api/v1/admin/orders:
+    get:
+      tags:
+        - 后台-订单
+      summary: 后台查询订单列表
+      description: 管理员按订单号、队伍号、用户、状态和时间查询订单。
+      parameters:
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - name: orderId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: teamId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+        - name: startTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: 后台订单分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrderPageApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-admin-order-list-001
+                    data:
+                      pageNo: 1
+                      pageSize: 10
+                      total: 1
+                      items:
+                        - orderId: ORD-20260525-0001
+                          clientOrderNo: CLIENT-20260525-0001
+                          userId: 10001
+                          username: user001
+                          teamId: TEAM-20260525-001
+                          skuName: 桂花豆沙粽礼盒
+                          orderStatus: PAID
+                          teamStatus: COMPLETE
+                          payPriceCent: 7900
+                          createdAt: "2026-05-25T10:00:00+08:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/orders/{orderId}:
+    get:
+      tags:
+        - 后台-订单
+      summary: 后台查询订单详情
+      description: 返回价格快照、支付记录、退款记录、团队状态和审计辅助字段。
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: 后台订单详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetailApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/OrderDetailSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/OrderNotFound"
+
+  /api/v1/admin/orders/{orderId}/refunds:
+    post:
+      tags:
+        - 后台-订单
+      summary: 后台订单退款
+      description: 管理员对 PAID 订单发起退款，必须填写原因并记录审计。使用 refundNo 幂等。
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRefundRequest"
+            examples:
+              normal:
+                value:
+                  refundNo: RF-ADMIN-20260525-0001
+                  reason: 客诉补偿退款
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 退款成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-admin-refund-001
+                    data:
+                      orderId: ORD-20260525-0001
+                      refundNo: RF-ADMIN-20260525-0001
+                      refundSource: ADMIN
+                      orderStatus: REFUNDED
+                      teamStatus: COMPLETE_AFTER_REFUND
+                      refundedAt: "2026-05-25T11:00:00+08:00"
+        "400":
+          $ref: "#/components/responses/TradeInvalidStatus"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/events/overview:
+    get:
+      tags:
+        - 后台-任务
+      summary: 查询任务治理概览
+      description: 返回待处理、失败、处理中、今日成功等任务数量。
+      responses:
+        "200":
+          description: 任务概览
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventOverviewApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-admin-event-overview-001
+                    data:
+                      initCount: 3
+                      processingCount: 1
+                      retryWaitCount: 2
+                      failedCount: 1
+                      successTodayCount: 18
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/events:
+    get:
+      tags:
+        - 后台-任务
+      summary: 查询可靠事件列表
+      description: 可靠事件统一承接通知、Redis 释放、队伍重建、超时修复和退款修复。
+      parameters:
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - name: eventType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/EventType"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TaskStatus"
+      responses:
+        "200":
+          description: 事件分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventPageApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/EventPageSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/events/{eventId}:
+    get:
+      tags:
+        - 后台-任务
+      summary: 查询可靠事件详情
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: 事件详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetailApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/EventDetailSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/events/{eventId}/execute:
+    post:
+      tags:
+        - 后台-任务
+      summary: 手动执行可靠事件
+      description: 手动执行也必须抢执行锁，并记录管理员审计。
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminOperationRequest"
+            examples:
+              normal:
+                value:
+                  reason: 人工排障执行
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 执行结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetailApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/EventDetailSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/events/{eventId}/retry:
+    post:
+      tags:
+        - 后台-任务
+      summary: 重试失败可靠事件
+      description: 将 FAILED 事件重置为 RETRY_WAIT 或直接触发一次重试。
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminOperationRequest"
+      responses:
+        "200":
+          description: 重试结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetailApiResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/activities:
+    get:
+      tags:
+        - 后台-活动
+      summary: 后台查询活动列表
+      description: 管理员按活动、商品、状态查询活动配置，返回活动主配置、折扣配置和 SKU 绑定摘要。
+      parameters:
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - name: activityId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: skuId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ActivityStatus"
+      responses:
+        "200":
+          description: 活动配置分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminActivityPageApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AdminActivityPageSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - 后台-活动
+      summary: 保存活动配置
+      description: 保存活动主配置和折扣配置。后台写操作必须记录审计，并触发活动缓存版本递增或精确失效。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminActivitySaveRequest"
+            examples:
+              normal:
+                value:
+                  activityId: 20001
+                  title: 端午粽子双人拼团
+                  discountId: 90001
+                  discountType: DIRECT
+                  discountValueCent: 2000
+                  discountRule:
+                    thresholdCent: 0
+                  targetCount: 2
+                  validMinutes: 30
+                  takeLimitCount: 1
+                  startTime: "2026-05-25T09:00:00+08:00"
+                  endTime: "2026-06-01T23:59:59+08:00"
+                  status: ACTIVE
+                  tagId: TAG-VIP-001
+                  reason: P0 演示活动配置
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 保存后的活动配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminActivityApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AdminActivitySuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/activities/{activityId}:
+    get:
+      tags:
+        - 后台-活动
+      summary: 后台查询活动详情
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      responses:
+        "200":
+          description: 活动配置详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminActivityApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AdminActivitySuccess"
+        "404":
+          $ref: "#/components/responses/MarketNotFound"
+    put:
+      tags:
+        - 后台-活动
+      summary: 更新活动配置
+      description: 更新活动、折扣、标签等配置。后端必须校验时间窗、成团人数、限购和状态，并写审计。
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminActivitySaveRequest"
+      responses:
+        "200":
+          description: 更新后的活动配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminActivityApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/activities/{activityId}/sku-bindings:
+    post:
+      tags:
+        - 后台-活动
+      summary: 绑定 SKU 到活动
+      description: 维护 source + channel + skuId 到 activityId 的映射，绑定后会影响用户端会场、试算和锁单。
+      parameters:
+        - $ref: "#/components/parameters/ActivityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminActivityBindSkuRequest"
+            examples:
+              normal:
+                value:
+                  source: APP
+                  channel: H5
+                  skuId: 30001
+                  reason: 绑定端午活动商品
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 绑定后的活动配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminActivityApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/tag-jobs:
+    get:
+      tags:
+        - 后台-标签
+      summary: 查询标签任务列表
+      description: 查询标签任务、执行批次、统计结果和失败原因。
+      parameters:
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - name: tagId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TaskStatus"
+      responses:
+        "200":
+          description: 标签任务分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagJobPageApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TagJobPageSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - 后台-标签
+      summary: 保存标签任务
+      description: 创建标签任务定义。执行后 MySQL 保存完整明细，Redis 或本地缓存可作为在线命中加速层。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagJobSaveRequest"
+            examples:
+              normal:
+                value:
+                  tagId: TAG-VIP-001
+                  tagName: 高价值用户
+                  tagDesc: 参与次数大于等于 2 的用户
+                  batchId: BATCH-20260525-001
+                  tagType: PARTICIPATE_COUNT
+                  tagRule: GTE:2
+                  statStartTime: "2026-05-01T00:00:00+08:00"
+                  statEndTime: "2026-05-25T23:59:59+08:00"
+                  reason: 创建 P0 标签
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 保存后的标签任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagJobApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TagJobSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/tag-jobs/{tagId}/{batchId}:
+    put:
+      tags:
+        - 后台-标签
+      summary: 更新标签任务
+      description: 更新标签规则、统计时间窗、状态。rebuild=true 时保存后立即重建人群明细。
+      parameters:
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagJobUpdateRequest"
+      responses:
+        "200":
+          description: 更新后的标签任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagJobApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/tag-jobs/{tagId}/{batchId}/execute:
+    post:
+      tags:
+        - 后台-标签
+      summary: 执行标签任务
+      description: 手动执行指定标签批次，生成 MySQL 明细并刷新在线命中缓存。执行动作必须写审计。
+      parameters:
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminOperationRequest"
+            examples:
+              normal:
+                value:
+                  reason: 人工执行标签任务
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 执行结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagJobExecuteApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TagJobExecuteSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/tag-hit-check:
+    get:
+      tags:
+        - 后台-标签
+      summary: 标签命中检查
+      description: 检查指定用户是否命中标签当前生效批次。
+      parameters:
+        - name: tagId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: 命中检查结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagHitResultApiResponse"
+              examples:
+                hit:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-tag-hit-001
+                    data:
+                      tagId: TAG-VIP-001
+                      batchId: BATCH-20260525-001
+                      userId: 10001
+                      hit: true
+                      hitSource: MYSQL
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/dcc/configs:
+    get:
+      tags:
+        - 后台-配置
+      summary: 查询 DCC 配置
+      description: 查询当前运行时配置快照，用于确认降级、黑名单、缓存开关等值。
+      responses:
+        "200":
+          description: DCC 配置列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DccConfigListApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-dcc-list-001
+                    data:
+                      - configKey: downgradeSwitch
+                        configValue: "0"
+                        description: 是否开启交易降级
+                        updatedAt: "2026-05-25T10:00:00+08:00"
+                      - configKey: cacheSwitch
+                        configValue: "1"
+                        description: 是否启用会场缓存
+                        updatedAt: "2026-05-25T10:00:00+08:00"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/admin/dcc/configs/{configKey}:
+    put:
+      tags:
+        - 后台-配置
+      summary: 更新 DCC 配置
+      description: 更新运行时配置。后端必须校验 key 白名单和值范围，并写审计。
+      parameters:
+        - name: configKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DccConfigUpdateRequest"
+            examples:
+              normal:
+                value:
+                  configValue: "1"
+                  reason: 演练交易降级开关
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 更新后的配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DccConfigApiResponse"
+              examples:
+                success:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-dcc-update-001
+                    data:
+                      configKey: downgradeSwitch
+                      configValue: "1"
+                      description: 是否开启交易降级
+                      updatedAt: "2026-05-25T10:05:00+08:00"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/thread-pools:
+    get:
+      tags:
+        - 后台-配置
+      summary: 查询线程池列表
+      description: 查询当前应用内所有可治理线程池的运行态快照。
+      responses:
+        "200":
+          description: 线程池列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThreadPoolListApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/ThreadPoolListSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/thread-pools/{threadPoolName}:
+    get:
+      tags:
+        - 后台-配置
+      summary: 查询线程池配置
+      parameters:
+        - name: threadPoolName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 线程池详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThreadPoolRuntimeApiResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags:
+        - 后台-配置
+      summary: 更新线程池配置
+      description: 更新线程池 core/max 参数。后端必须校验 corePoolSize <= maximumPoolSize，并写审计。
+      parameters:
+        - name: threadPoolName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ThreadPoolUpdateRequest"
+            examples:
+              normal:
+                value:
+                  corePoolSize: 8
+                  maximumPoolSize: 16
+                  reason: 临时提升任务执行吞吐
+                  operatorConfirm: true
+      responses:
+        "200":
+          description: 更新后的线程池配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThreadPoolRuntimeApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/audit-logs:
+    get:
+      tags:
+        - 后台-配置
+      summary: 查询审计日志
+      description: 查询后台写操作审计记录，用于追踪活动、标签、订单、任务、配置和线程池操作。
+      parameters:
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - name: operatorId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: targetType
+          in: query
+          required: false
+          schema:
+            type: string
+            example: ACTIVITY
+        - name: targetId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: result
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - SUCCESS
+              - FAILED
+        - name: startTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: 审计日志分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogPageApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AuditLogPageSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-token
+      description: 登录接口返回的 token。后端可用 Redis session 承载。
+
+  parameters:
+    PageNo:
+      name: pageNo
+      in: query
+      required: false
+      description: 页码，从 1 开始
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: 每页数量
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    Source:
+      name: source
+      in: query
+      required: true
+      description: 流量来源
+      schema:
+        type: string
+        example: APP
+    Channel:
+      name: channel
+      in: query
+      required: true
+      description: 渠道
+      schema:
+        type: string
+        example: H5
+    ActivityId:
+      name: activityId
+      in: path
+      required: true
+      description: 活动 ID
+      schema:
+        type: integer
+        format: int64
+        example: 20001
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: 订单 ID
+      schema:
+        type: string
+        example: ORD-20260525-0001
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      description: 可靠事件 ID
+      schema:
+        type: string
+        example: EVT-20260525-0001
+
+  responses:
+    BadRequest:
+      description: 请求参数或业务规则不满足
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            invalidParam:
+              value:
+                code: SYSTEM_PARAM_INVALID
+                message: 请求参数不合法
+                data:
+                  field: username
+                  reason: 用户名长度必须为 4 到 20 位
+                traceId: trace-param-001
+    Unauthorized:
+      description: 未登录或登录已过期
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            unauthorized:
+              value:
+                code: AUTH_401
+                message: 未登录或登录已过期
+                data: null
+                traceId: trace-auth-401
+    Forbidden:
+      description: 权限不足或访问他人资源
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            forbidden:
+              value:
+                code: AUTH_403
+                message: 权限不足
+                data: null
+                traceId: trace-auth-403
+    MarketNotFound:
+      description: 活动或商品不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            notFound:
+              value:
+                code: MARKET_NOT_FOUND
+                message: 活动或商品不存在
+                data:
+                  activityId: 20001
+                traceId: trace-market-404
+    OrderNotFound:
+      description: 订单不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            notFound:
+              value:
+                code: TRADE_ORDER_NOT_FOUND
+                message: 订单不存在
+                data:
+                  orderId: ORD-20260525-0001
+                traceId: trace-order-404
+    TradeInvalidStatus:
+      description: 订单状态不允许当前操作
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            invalidStatus:
+              value:
+                code: TRADE_ORDER_STATUS_INVALID
+                message: 当前订单状态不允许操作
+                data:
+                  orderId: ORD-20260525-0001
+                  currentStatus: REFUNDED
+                traceId: trace-trade-status-001
+
+  examples:
+    AuthSessionSuccess:
+      summary: 登录态返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-auth-001
+        data:
+          token: zxp-local-token-10001
+          expiresInSeconds: 7200
+          user:
+            userId: 10001
+            username: user001
+            phone: "13800000001"
+            role: USER
+            status: ENABLED
+    AuthBadCredentials:
+      summary: 密码错误
+      value:
+        code: AUTH_BAD_CREDENTIALS
+        message: 账号或密码错误
+        data: null
+        traceId: trace-auth-err-001
+    MarketActivityPageSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-market-list-001
+        data:
+          pageNo: 1
+          pageSize: 10
+          total: 1
+          items:
+            - activityId: 20001
+              skuId: 30001
+              title: 端午粽子双人拼团
+              goodsName: 桂花豆沙粽礼盒
+              imageUrl: https://example.com/sku/30001.png
+              category: food
+              originalPriceCent: 9900
+              groupPriceCent: 7900
+              status: ACTIVE
+              targetCount: 2
+              completeTeamCount: 18
+              processingTeamCount: 6
+              remainSeconds: 604800
+              topTeams:
+                - teamId: TEAM-20260525-001
+                  activityId: 20001
+                  status: PROGRESS
+                  targetCount: 2
+                  completeCount: 1
+                  lockCount: 0
+                  remainCount: 1
+                  expireTime: "2026-05-25T10:30:00+08:00"
+    TrialSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-trial-001
+        data:
+          trialNo: TRIAL-20260525-0001
+          activityId: 20001
+          skuId: 30001
+          eligible: true
+          originalPriceCent: 9900
+          discountCent: 2000
+          payPriceCent: 7900
+          activitySnapshot:
+            targetCount: 2
+            validMinutes: 30
+            version: 3
+          discountSnapshot:
+            discountType: DIRECT
+            rule: 满团立减 20 元
+          tagHit:
+            tagId: TAG-VIP-001
+            hit: true
+          availableTeams:
+            - teamId: TEAM-20260525-001
+              activityId: 20001
+              status: PROGRESS
+              targetCount: 2
+              completeCount: 1
+              lockCount: 0
+              remainCount: 1
+              expireTime: "2026-05-25T10:30:00+08:00"
+          calculatedAt: "2026-05-25T10:00:00+08:00"
+    LockOrderSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-trade-lock-001
+        data:
+          orderId: ORD-20260525-0001
+          clientOrderNo: CLIENT-20260525-0001
+          teamId: TEAM-20260525-001
+          orderStatus: WAIT_PAY
+          teamStatus: PROGRESS
+          payPriceCent: 7900
+          payDeadline: "2026-05-25T10:15:00+08:00"
+          canPay: true
+    PaymentSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-pay-001
+        data:
+          orderId: ORD-20260525-0001
+          payNo: PAY-20260525-0001
+          orderStatus: PAID
+          teamStatus: COMPLETE
+          paidAt: "2026-05-25T10:02:00+08:00"
+          completed: true
+    RefundSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-refund-001
+        data:
+          orderId: ORD-20260525-0001
+          refundNo: RF-20260525-0001
+          refundSource: USER
+          orderStatus: REFUNDED
+          teamStatus: COMPLETE_AFTER_REFUND
+          refundedAt: "2026-05-25T11:00:00+08:00"
+    OrderPageSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-order-list-001
+        data:
+          pageNo: 1
+          pageSize: 10
+          total: 1
+          items:
+            - orderId: ORD-20260525-0001
+              activityId: 20001
+              skuId: 30001
+              goodsName: 桂花豆沙粽礼盒
+              imageUrl: https://example.com/sku/30001.png
+              teamId: TEAM-20260525-001
+              orderStatus: PAID
+              teamStatus: COMPLETE
+              originalPriceCent: 9900
+              discountCent: 2000
+              payPriceCent: 7900
+              canPay: false
+              canRefund: true
+              createdAt: "2026-05-25T10:00:00+08:00"
+    OrderDetailSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-order-detail-001
+        data:
+          orderId: ORD-20260525-0001
+          clientOrderNo: CLIENT-20260525-0001
+          userId: 10001
+          activityId: 20001
+          skuId: 30001
+          goodsName: 桂花豆沙粽礼盒
+          imageUrl: https://example.com/sku/30001.png
+          team:
+            teamId: TEAM-20260525-001
+            activityId: 20001
+            status: COMPLETE
+            targetCount: 2
+            completeCount: 2
+            lockCount: 0
+            refundCount: 0
+            expireTime: "2026-05-25T10:30:00+08:00"
+          orderStatus: PAID
+          originalPriceCent: 9900
+          discountCent: 2000
+          payPriceCent: 7900
+          activitySnapshot:
+            targetCount: 2
+            validMinutes: 30
+            version: 3
+          discountSnapshot:
+            discountType: DIRECT
+            rule: 满团立减 20 元
+          payment:
+            payNo: PAY-20260525-0001
+            paidAt: "2026-05-25T10:02:00+08:00"
+            amountCent: 7900
+          refunds: []
+          canPay: false
+          canRefund: true
+          createdAt: "2026-05-25T10:00:00+08:00"
+          updatedAt: "2026-05-25T10:02:00+08:00"
+    EventPageSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-event-list-001
+        data:
+          pageNo: 1
+          pageSize: 10
+          total: 1
+          items:
+            - eventId: EVT-20260525-0001
+              eventType: TEAM_COMPLETE_NOTIFY
+              bizKey: TEAM-20260525-001
+              status: RETRY_WAIT
+              retryCount: 1
+              nextExecuteTime: "2026-05-25T10:10:00+08:00"
+              lastError: 下游通知失败
+              createdAt: "2026-05-25T10:02:00+08:00"
+    EventDetailSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-event-detail-001
+        data:
+          eventId: EVT-20260525-0001
+          eventType: TEAM_COMPLETE_NOTIFY
+          bizKey: TEAM-20260525-001
+          status: RETRY_WAIT
+          retryCount: 1
+          maxRetryCount: 5
+          nextExecuteTime: "2026-05-25T10:10:00+08:00"
+          payload:
+            teamId: TEAM-20260525-001
+            orderIds:
+              - ORD-20260525-0001
+          lastError: 下游通知失败
+          createdAt: "2026-05-25T10:02:00+08:00"
+          updatedAt: "2026-05-25T10:03:00+08:00"
+    AdminActivitySuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-admin-activity-001
+        data:
+          activityId: 20001
+          title: 端午粽子双人拼团
+          status: ACTIVE
+          targetCount: 2
+          validMinutes: 30
+          takeLimitCount: 1
+          startTime: "2026-05-25T09:00:00+08:00"
+          endTime: "2026-06-01T23:59:59+08:00"
+          tagId: TAG-VIP-001
+          version: 4
+          discount:
+            discountId: 90001
+            discountType: DIRECT
+            discountValueCent: 2000
+            discountRule:
+              thresholdCent: 0
+          skuBindings:
+            - source: APP
+              channel: H5
+              skuId: 30001
+              skuName: 桂花豆沙粽礼盒
+              status: ENABLED
+          updatedAt: "2026-05-25T10:10:00+08:00"
+    AdminActivityPageSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-admin-activity-list-001
+        data:
+          pageNo: 1
+          pageSize: 10
+          total: 1
+          items:
+            - activityId: 20001
+              title: 端午粽子双人拼团
+              status: ACTIVE
+              targetCount: 2
+              validMinutes: 30
+              takeLimitCount: 1
+              startTime: "2026-05-25T09:00:00+08:00"
+              endTime: "2026-06-01T23:59:59+08:00"
+              tagId: TAG-VIP-001
+              version: 4
+              discount:
+                discountId: 90001
+                discountType: DIRECT
+                discountValueCent: 2000
+              skuBindings:
+                - source: APP
+                  channel: H5
+                  skuId: 30001
+                  skuName: 桂花豆沙粽礼盒
+                  status: ENABLED
+              updatedAt: "2026-05-25T10:10:00+08:00"
+    TagJobSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-tag-job-001
+        data:
+          tagId: TAG-VIP-001
+          batchId: BATCH-20260525-001
+          tagName: 高价值用户
+          tagDesc: 参与次数大于等于 2 的用户
+          tagType: PARTICIPATE_COUNT
+          tagRule: GTE:2
+          status: INIT
+          statistics: 0
+          failReason: null
+          statStartTime: "2026-05-01T00:00:00+08:00"
+          statEndTime: "2026-05-25T23:59:59+08:00"
+          executeTime: null
+    TagJobPageSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-tag-job-list-001
+        data:
+          pageNo: 1
+          pageSize: 10
+          total: 1
+          items:
+            - tagId: TAG-VIP-001
+              batchId: BATCH-20260525-001
+              tagName: 高价值用户
+              tagDesc: 参与次数大于等于 2 的用户
+              tagType: PARTICIPATE_COUNT
+              tagRule: GTE:2
+              status: SUCCESS
+              statistics: 128
+              failReason: null
+              statStartTime: "2026-05-01T00:00:00+08:00"
+              statEndTime: "2026-05-25T23:59:59+08:00"
+              executeTime: "2026-05-25T10:20:00+08:00"
+    TagJobExecuteSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-tag-execute-001
+        data:
+          tagId: TAG-VIP-001
+          batchId: BATCH-20260525-001
+          status: SUCCESS
+          statistics: 128
+          executeTime: "2026-05-25T10:20:00+08:00"
+    ThreadPoolListSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-thread-list-001
+        data:
+          - appName: zhongxiangpin
+            threadPoolName: reliableEventExecutor
+            corePoolSize: 4
+            maximumPoolSize: 8
+            activeCount: 2
+            poolSize: 4
+            queueType: LinkedBlockingQueue
+            queueSize: 1000
+            remainingCapacity: 980
+            rejectedCount: 0
+            topic: zxp-thread-pool-config
+            updatedAt: "2026-05-25T10:00:00+08:00"
+    AuditLogPageSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-audit-list-001
+        data:
+          pageNo: 1
+          pageSize: 10
+          total: 1
+          items:
+            - auditId: AUD-20260525-0001
+              operatorId: 1
+              operatorName: admin
+              action: UPDATE_ACTIVITY
+              targetType: ACTIVITY
+              targetId: "20001"
+              beforeData:
+                status: PAUSED
+              afterData:
+                status: ACTIVE
+              result: SUCCESS
+              reason: P0 演示活动上线
+              traceId: trace-admin-activity-001
+              createdAt: "2026-05-25T10:10:00+08:00"
+
+  schemas:
+    ApiResponse:
+      type: object
+      required:
+        - code
+        - message
+        - traceId
+      properties:
+        code:
+          type: string
+          description: 业务状态码。成功为 0000，失败使用 ErrorCode 枚举。
+          example: "0000"
+        message:
+          type: string
+          description: 面向前端展示或日志定位的中文信息。
+          example: 成功
+        data:
+          nullable: true
+          description: 具体响应数据，由接口定义决定。
+        traceId:
+          type: string
+          description: 请求追踪 ID。
+          example: trace-20260525-001
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            code:
+              $ref: "#/components/schemas/ErrorCode"
+            data:
+              nullable: true
+              description: 错误上下文，例如字段名、订单号或活动号。
+    ErrorCode:
+      type: string
+      description: 项目错误码。实现时可以扩展，但不得改变已有语义。
+      enum:
+        - "0000"
+        - AUTH_401
+        - AUTH_403
+        - AUTH_USERNAME_DUPLICATED
+        - AUTH_BAD_CREDENTIALS
+        - AUTH_CODE_INVALID
+        - AUTH_ACCOUNT_DISABLED
+        - MARKET_NOT_FOUND
+        - MARKET_ACTIVITY_UNAVAILABLE
+        - MARKET_TAG_NOT_MATCHED
+        - TRADE_IDEMPOTENT_REPLAY
+        - TRADE_TEAM_FULL
+        - TRADE_ORDER_STATUS_INVALID
+        - TRADE_PRICE_CHANGED
+        - TRADE_ORDER_NOT_FOUND
+        - TRADE_ORDER_FORBIDDEN
+        - ADMIN_INVALID_OPERATION
+        - SYSTEM_PARAM_INVALID
+        - SYSTEM_ERROR
+    PageResponse:
+      type: object
+      required:
+        - pageNo
+        - pageSize
+        - total
+        - items
+      properties:
+        pageNo:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          format: int64
+          example: 1
+        items:
+          type: array
+          items:
+            type: object
+
+    UserRole:
+      type: string
+      enum:
+        - USER
+        - ADMIN
+    UserStatus:
+      type: string
+      enum:
+        - ENABLED
+        - DISABLED
+    ActivityStatus:
+      type: string
+      enum:
+        - DRAFT
+        - ACTIVE
+        - PAUSED
+        - ENDED
+    OrderStatus:
+      type: string
+      enum:
+        - WAIT_PAY
+        - PAID
+        - REFUNDED
+        - CLOSED_TIMEOUT
+    TeamStatus:
+      type: string
+      enum:
+        - PROGRESS
+        - COMPLETE
+        - EXPIRED_UNFORMED
+        - COMPLETE_AFTER_REFUND
+    TaskStatus:
+      type: string
+      enum:
+        - INIT
+        - PROCESSING
+        - SUCCESS
+        - FAILED
+        - RETRY_WAIT
+    RefundSource:
+      type: string
+      enum:
+        - USER
+        - ADMIN
+        - AUTO_EXPIRED
+    CodePurpose:
+      type: string
+      enum:
+        - LOGIN
+        - BIND_PHONE
+    EventType:
+      type: string
+      enum:
+        - TEAM_COMPLETE_NOTIFY
+        - REDIS_SLOT_RELEASE
+        - TEAM_REBUILD
+        - ORDER_TIMEOUT_REPAIR
+        - REFUND_REPAIR
+
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 4
+          maxLength: 20
+          pattern: "^[A-Za-z0-9_]+$"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 64
+        phone:
+          type: string
+          pattern: "^1[3-9][0-9]{9}$"
+    SendCodeRequest:
+      type: object
+      required:
+        - phone
+        - purpose
+      properties:
+        phone:
+          type: string
+          pattern: "^1[3-9][0-9]{9}$"
+        purpose:
+          $ref: "#/components/schemas/CodePurpose"
+    PasswordLoginRequest:
+      type: object
+      required:
+        - account
+        - password
+      properties:
+        account:
+          type: string
+          description: 用户名或手机号
+        password:
+          type: string
+    CodeLoginRequest:
+      type: object
+      required:
+        - phone
+        - code
+      properties:
+        phone:
+          type: string
+          pattern: "^1[3-9][0-9]{9}$"
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+    CurrentUser:
+      type: object
+      required:
+        - userId
+        - username
+        - role
+        - status
+      properties:
+        userId:
+          type: integer
+          format: int64
+        username:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/UserRole"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+    AuthSession:
+      type: object
+      required:
+        - token
+        - expiresInSeconds
+        - user
+      properties:
+        token:
+          type: string
+        expiresInSeconds:
+          type: integer
+        user:
+          $ref: "#/components/schemas/CurrentUser"
+    SendCodeResult:
+      type: object
+      required:
+        - sent
+        - ttlSeconds
+      properties:
+        sent:
+          type: boolean
+        ttlSeconds:
+          type: integer
+        mockCode:
+          type: string
+          nullable: true
+          description: 仅 local profile 允许返回。
+
+    HealthStatus:
+      type: object
+      required:
+        - app
+        - db
+        - redis
+        - profile
+      properties:
+        app:
+          type: string
+          example: UP
+        db:
+          type: string
+          example: UP
+        redis:
+          type: string
+          example: UP
+        profile:
+          type: string
+          example: local
+
+    AdminActivity:
+      type: object
+      required:
+        - activityId
+        - title
+        - status
+        - targetCount
+        - validMinutes
+        - takeLimitCount
+        - startTime
+        - endTime
+        - version
+        - discount
+        - skuBindings
+        - updatedAt
+      properties:
+        activityId:
+          type: integer
+          format: int64
+        title:
+          type: string
+          description: 活动展示名称。
+        status:
+          $ref: "#/components/schemas/ActivityStatus"
+        targetCount:
+          type: integer
+          minimum: 2
+          description: 成团目标人数。
+        validMinutes:
+          type: integer
+          minimum: 1
+          description: 队伍有效期，单位分钟。
+        takeLimitCount:
+          type: integer
+          minimum: 1
+          description: 单用户参与次数上限。
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        tagId:
+          type: string
+          nullable: true
+        tagScope:
+          type: string
+          nullable: true
+          description: 标签作用范围，兼容旧工程的可见限制和参与限制配置。
+        version:
+          type: integer
+          description: 活动版本，用于缓存失效和订单快照。
+        discount:
+          $ref: "#/components/schemas/AdminActivityDiscount"
+        skuBindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminActivitySkuBinding"
+        updatedAt:
+          type: string
+          format: date-time
+    AdminActivityDiscount:
+      type: object
+      required:
+        - discountId
+        - discountType
+      properties:
+        discountId:
+          type: integer
+          format: int64
+        discountType:
+          type: string
+          description: 折扣类型，兼容旧工程 marketPlan，如 DIRECT/ZJ/ZK/MJ/N。
+        discountValueCent:
+          type: integer
+          format: int64
+          description: 直减或固定优惠金额，单位分。
+        discountRule:
+          type: object
+          additionalProperties: true
+          description: 折扣规则表达式，结构化 JSON。
+    AdminActivitySkuBinding:
+      type: object
+      required:
+        - source
+        - channel
+        - skuId
+        - status
+      properties:
+        source:
+          type: string
+        channel:
+          type: string
+        skuId:
+          type: integer
+          format: int64
+        skuName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - ENABLED
+            - DISABLED
+    AdminActivitySaveRequest:
+      allOf:
+        - $ref: "#/components/schemas/AdminOperationRequest"
+        - type: object
+          required:
+            - activityId
+            - title
+            - discountId
+            - discountType
+            - targetCount
+            - validMinutes
+            - takeLimitCount
+            - startTime
+            - endTime
+            - status
+          properties:
+            activityId:
+              type: integer
+              format: int64
+            title:
+              type: string
+              minLength: 1
+              maxLength: 128
+            discountId:
+              type: integer
+              format: int64
+            discountType:
+              type: string
+            discountValueCent:
+              type: integer
+              format: int64
+              minimum: 0
+            discountRule:
+              type: object
+              additionalProperties: true
+            targetCount:
+              type: integer
+              minimum: 2
+            validMinutes:
+              type: integer
+              minimum: 1
+            takeLimitCount:
+              type: integer
+              minimum: 1
+            startTime:
+              type: string
+              format: date-time
+            endTime:
+              type: string
+              format: date-time
+            status:
+              $ref: "#/components/schemas/ActivityStatus"
+            tagId:
+              type: string
+              nullable: true
+            tagScope:
+              type: string
+              nullable: true
+    AdminActivityBindSkuRequest:
+      allOf:
+        - $ref: "#/components/schemas/AdminOperationRequest"
+        - type: object
+          required:
+            - source
+            - channel
+            - skuId
+          properties:
+            source:
+              type: string
+            channel:
+              type: string
+            skuId:
+              type: integer
+              format: int64
+    AdminActivityPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AdminActivity"
+
+    TagJobType:
+      type: string
+      enum:
+        - USERS
+        - PARTICIPATE_COUNT
+    TagJob:
+      type: object
+      required:
+        - tagId
+        - batchId
+        - tagName
+        - tagType
+        - tagRule
+        - status
+        - statistics
+      properties:
+        tagId:
+          type: string
+        batchId:
+          type: string
+        tagName:
+          type: string
+        tagDesc:
+          type: string
+          nullable: true
+        tagType:
+          $ref: "#/components/schemas/TagJobType"
+        tagRule:
+          type: string
+          description: USERS 使用逗号分隔用户名，PARTICIPATE_COUNT 使用 GTE:N。
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        statistics:
+          type: integer
+          description: 当前批次命中用户数。
+        failReason:
+          type: string
+          nullable: true
+        statStartTime:
+          type: string
+          format: date-time
+          nullable: true
+        statEndTime:
+          type: string
+          format: date-time
+          nullable: true
+        executeTime:
+          type: string
+          format: date-time
+          nullable: true
+    TagJobSaveRequest:
+      allOf:
+        - $ref: "#/components/schemas/AdminOperationRequest"
+        - type: object
+          required:
+            - tagId
+            - tagName
+            - tagType
+            - tagRule
+          properties:
+            tagId:
+              type: string
+            tagName:
+              type: string
+            tagDesc:
+              type: string
+            batchId:
+              type: string
+              nullable: true
+            tagType:
+              $ref: "#/components/schemas/TagJobType"
+            tagRule:
+              type: string
+            statStartTime:
+              type: string
+              format: date-time
+              nullable: true
+            statEndTime:
+              type: string
+              format: date-time
+              nullable: true
+    TagJobUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/TagJobSaveRequest"
+        - type: object
+          properties:
+            status:
+              $ref: "#/components/schemas/TaskStatus"
+            rebuild:
+              type: boolean
+              default: false
+    TagJobExecuteResult:
+      type: object
+      required:
+        - tagId
+        - batchId
+        - status
+        - statistics
+        - executeTime
+      properties:
+        tagId:
+          type: string
+        batchId:
+          type: string
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        statistics:
+          type: integer
+        executeTime:
+          type: string
+          format: date-time
+    TagHitResult:
+      type: object
+      required:
+        - tagId
+        - batchId
+        - userId
+        - hit
+        - hitSource
+      properties:
+        tagId:
+          type: string
+        batchId:
+          type: string
+        userId:
+          type: integer
+          format: int64
+        userAccountId:
+          type: integer
+          format: int64
+          nullable: true
+        hit:
+          type: boolean
+        hitSource:
+          type: string
+          description: 命中来源，如 REDIS、MYSQL、LOCAL_CACHE。
+    TagJobPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/TagJob"
+
+    DccConfig:
+      type: object
+      required:
+        - configKey
+        - configValue
+      properties:
+        configKey:
+          type: string
+        configValue:
+          type: string
+        description:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    DccConfigUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/AdminOperationRequest"
+        - type: object
+          required:
+            - configValue
+          properties:
+            configValue:
+              type: string
+
+    ThreadPoolRuntime:
+      type: object
+      required:
+        - threadPoolName
+        - corePoolSize
+        - maximumPoolSize
+        - activeCount
+        - poolSize
+        - queueSize
+      properties:
+        appName:
+          type: string
+        threadPoolName:
+          type: string
+        corePoolSize:
+          type: integer
+        maximumPoolSize:
+          type: integer
+        activeCount:
+          type: integer
+        poolSize:
+          type: integer
+        queueType:
+          type: string
+        queueSize:
+          type: integer
+        remainingCapacity:
+          type: integer
+        rejectedCount:
+          type: integer
+        topic:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ThreadPoolUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/AdminOperationRequest"
+        - type: object
+          required:
+            - corePoolSize
+            - maximumPoolSize
+          properties:
+            corePoolSize:
+              type: integer
+              minimum: 1
+            maximumPoolSize:
+              type: integer
+              minimum: 1
+
+    AuditLog:
+      type: object
+      required:
+        - auditId
+        - operatorId
+        - operatorName
+        - action
+        - targetType
+        - targetId
+        - result
+        - createdAt
+      properties:
+        auditId:
+          type: string
+        operatorId:
+          type: integer
+          format: int64
+        operatorName:
+          type: string
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+        beforeData:
+          type: object
+          additionalProperties: true
+          nullable: true
+        afterData:
+          type: object
+          additionalProperties: true
+          nullable: true
+        result:
+          type: string
+          enum:
+            - SUCCESS
+            - FAILED
+        reason:
+          type: string
+          nullable: true
+        traceId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    AuditLogPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditLog"
+
+    MarketActivitySummary:
+      type: object
+      required:
+        - activityId
+        - skuId
+        - title
+        - goodsName
+        - originalPriceCent
+        - groupPriceCent
+        - status
+        - targetCount
+        - topTeams
+      properties:
+        activityId:
+          type: integer
+          format: int64
+        skuId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        goodsName:
+          type: string
+        imageUrl:
+          type: string
+        category:
+          type: string
+        originalPriceCent:
+          type: integer
+          format: int64
+        groupPriceCent:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/ActivityStatus"
+        targetCount:
+          type: integer
+        completeTeamCount:
+          type: integer
+        processingTeamCount:
+          type: integer
+        remainSeconds:
+          type: integer
+        topTeams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSummary"
+    GoodsSnapshot:
+      type: object
+      required:
+        - skuId
+        - name
+        - originalPriceCent
+      properties:
+        skuId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        imageUrl:
+          type: string
+        category:
+          type: string
+        originalPriceCent:
+          type: integer
+          format: int64
+    ActivitySnapshot:
+      type: object
+      required:
+        - targetCount
+        - validMinutes
+        - version
+      properties:
+        targetCount:
+          type: integer
+        validMinutes:
+          type: integer
+        version:
+          type: integer
+    ActivityConfig:
+      allOf:
+        - $ref: "#/components/schemas/ActivitySnapshot"
+        - type: object
+          required:
+            - activityId
+            - skuId
+            - title
+            - source
+            - channel
+            - status
+            - startTime
+            - endTime
+          properties:
+            activityId:
+              type: integer
+              format: int64
+            skuId:
+              type: integer
+              format: int64
+            title:
+              type: string
+            source:
+              type: string
+            channel:
+              type: string
+            status:
+              $ref: "#/components/schemas/ActivityStatus"
+            startTime:
+              type: string
+              format: date-time
+            endTime:
+              type: string
+              format: date-time
+            tagId:
+              type: string
+              nullable: true
+    PriceSnapshot:
+      type: object
+      required:
+        - originalPriceCent
+        - discountCent
+        - payPriceCent
+      properties:
+        originalPriceCent:
+          type: integer
+          format: int64
+        discountCent:
+          type: integer
+          format: int64
+        payPriceCent:
+          type: integer
+          format: int64
+    DiscountSnapshot:
+      type: object
+      required:
+        - discountType
+        - rule
+      properties:
+        discountType:
+          type: string
+          example: DIRECT
+        rule:
+          type: string
+          example: 满团立减 20 元
+    MarketStatistics:
+      type: object
+      properties:
+        completeTeamCount:
+          type: integer
+        processingTeamCount:
+          type: integer
+        paidOrderCount:
+          type: integer
+    TeamSummary:
+      type: object
+      required:
+        - teamId
+        - activityId
+        - status
+        - targetCount
+        - completeCount
+        - lockCount
+        - remainCount
+      properties:
+        teamId:
+          type: string
+        activityId:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/TeamStatus"
+        targetCount:
+          type: integer
+        completeCount:
+          type: integer
+        lockCount:
+          type: integer
+        refundCount:
+          type: integer
+        remainCount:
+          type: integer
+        expireTime:
+          type: string
+          format: date-time
+    MarketActivityPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/MarketActivitySummary"
+    MarketActivityDetail:
+      type: object
+      required:
+        - activity
+        - goods
+        - price
+        - statistics
+        - topTeams
+      properties:
+        activity:
+          $ref: "#/components/schemas/ActivityConfig"
+        goods:
+          $ref: "#/components/schemas/GoodsSnapshot"
+        price:
+          $ref: "#/components/schemas/PriceSnapshot"
+        statistics:
+          $ref: "#/components/schemas/MarketStatistics"
+        topTeams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSummary"
+    TrialRequest:
+      type: object
+      required:
+        - activityId
+        - skuId
+        - source
+        - channel
+      properties:
+        activityId:
+          type: integer
+          format: int64
+        skuId:
+          type: integer
+          format: int64
+        source:
+          type: string
+        channel:
+          type: string
+        joinTeamId:
+          type: string
+          nullable: true
+    TrialResult:
+      type: object
+      required:
+        - trialNo
+        - activityId
+        - skuId
+        - eligible
+        - originalPriceCent
+        - discountCent
+        - payPriceCent
+        - activitySnapshot
+        - discountSnapshot
+        - availableTeams
+        - calculatedAt
+      properties:
+        trialNo:
+          type: string
+        activityId:
+          type: integer
+          format: int64
+        skuId:
+          type: integer
+          format: int64
+        eligible:
+          type: boolean
+        originalPriceCent:
+          type: integer
+          format: int64
+        discountCent:
+          type: integer
+          format: int64
+        payPriceCent:
+          type: integer
+          format: int64
+        activitySnapshot:
+          $ref: "#/components/schemas/ActivitySnapshot"
+        discountSnapshot:
+          $ref: "#/components/schemas/DiscountSnapshot"
+        tagHit:
+          $ref: "#/components/schemas/TagHitResult"
+        availableTeams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamSummary"
+        calculatedAt:
+          type: string
+          format: date-time
+
+    LockOrderRequest:
+      type: object
+      required:
+        - clientOrderNo
+        - activityId
+        - skuId
+        - source
+        - channel
+      properties:
+        clientOrderNo:
+          type: string
+          minLength: 8
+          maxLength: 64
+        activityId:
+          type: integer
+          format: int64
+        skuId:
+          type: integer
+          format: int64
+        teamId:
+          type: string
+          nullable: true
+          description: 参团时传入；开团时为空。
+        source:
+          type: string
+        channel:
+          type: string
+    LockOrderResult:
+      type: object
+      required:
+        - orderId
+        - clientOrderNo
+        - teamId
+        - orderStatus
+        - teamStatus
+        - payPriceCent
+        - payDeadline
+        - canPay
+      properties:
+        orderId:
+          type: string
+        clientOrderNo:
+          type: string
+        teamId:
+          type: string
+        orderStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        teamStatus:
+          $ref: "#/components/schemas/TeamStatus"
+        payPriceCent:
+          type: integer
+          format: int64
+        payDeadline:
+          type: string
+          format: date-time
+        canPay:
+          type: boolean
+    MockPayRequest:
+      type: object
+      required:
+        - orderId
+        - payNo
+      properties:
+        orderId:
+          type: string
+        payNo:
+          type: string
+          minLength: 8
+          maxLength: 64
+    PaymentResult:
+      type: object
+      required:
+        - orderId
+        - payNo
+        - orderStatus
+        - teamStatus
+        - paidAt
+        - completed
+      properties:
+        orderId:
+          type: string
+        payNo:
+          type: string
+        orderStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        teamStatus:
+          $ref: "#/components/schemas/TeamStatus"
+        paidAt:
+          type: string
+          format: date-time
+        completed:
+          type: boolean
+    UserRefundRequest:
+      type: object
+      required:
+        - orderId
+        - refundNo
+        - reason
+      properties:
+        orderId:
+          type: string
+        refundNo:
+          type: string
+          minLength: 8
+          maxLength: 64
+        reason:
+          type: string
+          minLength: 2
+          maxLength: 200
+    AdminRefundRequest:
+      type: object
+      required:
+        - refundNo
+        - reason
+        - operatorConfirm
+      properties:
+        refundNo:
+          type: string
+        reason:
+          type: string
+          minLength: 2
+          maxLength: 200
+        operatorConfirm:
+          type: boolean
+    RefundResult:
+      type: object
+      required:
+        - orderId
+        - refundNo
+        - refundSource
+        - orderStatus
+        - teamStatus
+        - refundedAt
+      properties:
+        orderId:
+          type: string
+        refundNo:
+          type: string
+        refundSource:
+          $ref: "#/components/schemas/RefundSource"
+        orderStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        teamStatus:
+          $ref: "#/components/schemas/TeamStatus"
+        refundedAt:
+          type: string
+          format: date-time
+
+    OrderSummary:
+      type: object
+      required:
+        - orderId
+        - activityId
+        - skuId
+        - goodsName
+        - teamId
+        - orderStatus
+        - teamStatus
+        - payPriceCent
+        - canPay
+        - canRefund
+        - createdAt
+      properties:
+        orderId:
+          type: string
+        activityId:
+          type: integer
+          format: int64
+        skuId:
+          type: integer
+          format: int64
+        goodsName:
+          type: string
+        imageUrl:
+          type: string
+        teamId:
+          type: string
+        orderStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        teamStatus:
+          $ref: "#/components/schemas/TeamStatus"
+        originalPriceCent:
+          type: integer
+          format: int64
+        discountCent:
+          type: integer
+          format: int64
+        payPriceCent:
+          type: integer
+          format: int64
+        canPay:
+          type: boolean
+        canRefund:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    AdminOrderSummary:
+      allOf:
+        - $ref: "#/components/schemas/OrderSummary"
+        - type: object
+          properties:
+            clientOrderNo:
+              type: string
+            userId:
+              type: integer
+              format: int64
+            username:
+              type: string
+    PaymentRecord:
+      type: object
+      properties:
+        payNo:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+        amountCent:
+          type: integer
+          format: int64
+    RefundRecord:
+      type: object
+      properties:
+        refundNo:
+          type: string
+        refundSource:
+          $ref: "#/components/schemas/RefundSource"
+        reason:
+          type: string
+        refundedAt:
+          type: string
+          format: date-time
+        operatorId:
+          type: integer
+          format: int64
+          nullable: true
+    OrderDetail:
+      allOf:
+        - $ref: "#/components/schemas/OrderSummary"
+        - type: object
+          required:
+            - clientOrderNo
+            - userId
+            - team
+            - activitySnapshot
+            - discountSnapshot
+            - refunds
+            - updatedAt
+          properties:
+            clientOrderNo:
+              type: string
+            userId:
+              type: integer
+              format: int64
+            team:
+              $ref: "#/components/schemas/TeamSummary"
+            activitySnapshot:
+              $ref: "#/components/schemas/ActivitySnapshot"
+            discountSnapshot:
+              $ref: "#/components/schemas/DiscountSnapshot"
+            payment:
+              $ref: "#/components/schemas/PaymentRecord"
+            refunds:
+              type: array
+              items:
+                $ref: "#/components/schemas/RefundRecord"
+            updatedAt:
+              type: string
+              format: date-time
+    OrderPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/OrderSummary"
+    AdminOrderPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AdminOrderSummary"
+
+    EventOverview:
+      type: object
+      properties:
+        initCount:
+          type: integer
+        processingCount:
+          type: integer
+        retryWaitCount:
+          type: integer
+        failedCount:
+          type: integer
+        successTodayCount:
+          type: integer
+    ReliableEventSummary:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - bizKey
+        - status
+        - retryCount
+        - createdAt
+      properties:
+        eventId:
+          type: string
+        eventType:
+          $ref: "#/components/schemas/EventType"
+        bizKey:
+          type: string
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        retryCount:
+          type: integer
+        nextExecuteTime:
+          type: string
+          format: date-time
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    ReliableEventDetail:
+      allOf:
+        - $ref: "#/components/schemas/ReliableEventSummary"
+        - type: object
+          properties:
+            maxRetryCount:
+              type: integer
+            payload:
+              type: object
+              additionalProperties: true
+            updatedAt:
+              type: string
+              format: date-time
+    EventPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReliableEventSummary"
+    AdminOperationRequest:
+      type: object
+      required:
+        - reason
+        - operatorConfirm
+      properties:
+        reason:
+          type: string
+          minLength: 2
+          maxLength: 200
+        operatorConfirm:
+          type: boolean
+
+
+    HealthApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/HealthStatus"
+    BooleanApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              type: boolean
+    AuthSessionApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthSession"
+    SendCodeApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/SendCodeResult"
+    CurrentUserApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/CurrentUser"
+    MarketActivityPageApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/MarketActivityPage"
+    MarketActivityDetailApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/MarketActivityDetail"
+    TrialApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TrialResult"
+    LockOrderApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/LockOrderResult"
+    PaymentApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PaymentResult"
+    RefundApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/RefundResult"
+    OrderPageApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/OrderPage"
+    AdminOrderPageApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminOrderPage"
+    OrderDetailApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/OrderDetail"
+    EventOverviewApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/EventOverview"
+    EventPageApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/EventPage"
+    EventDetailApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ReliableEventDetail"
+    AdminActivityApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminActivity"
+    AdminActivityPageApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminActivityPage"
+    TagJobApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TagJob"
+    TagJobPageApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TagJobPage"
+    TagJobExecuteApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TagJobExecuteResult"
+    TagHitResultApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TagHitResult"
+    DccConfigListApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/DccConfig"
+    DccConfigApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/DccConfig"
+    ThreadPoolListApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ThreadPoolRuntime"
+    ThreadPoolRuntimeApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ThreadPoolRuntime"
+    AuditLogPageApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AuditLogPage"
