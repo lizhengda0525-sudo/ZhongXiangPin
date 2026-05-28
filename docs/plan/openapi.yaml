@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: 众享拼 API
   version: 0.2.0
-  description: 众享拼 P0 接口契约。本文档是前后端、Mock、M3 后落地的后端 DTO 和验收用例的共同依据。
+  description: 众享拼 P0 接口契约。本文档是前后端、Mock、M3 后落地的后端 DTO 和验收用例的共同依据。响应消息字段统一为 message，不保留旧项目 info 兼容别名；错误响应通过 HTTP 状态表达协议层语义，同时 body 仍使用 code/message/data/traceId 信封。
 servers:
   - url: http://localhost:8091
     description: 本地开发服务
@@ -57,6 +57,8 @@ paths:
                       db: UP
                       redis: UP
                       profile: local
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /api/v1/auth/register:
     post:
@@ -384,8 +386,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/TrialSuccess"
-        "400":
-          description: 活动不可用或标签未命中
+        "403":
+          description: 当前用户不满足活动人群要求
           content:
             application/json:
               schema:
@@ -455,8 +457,8 @@ paths:
                       payPriceCent: 7900
                       payDeadline: "2026-05-25T10:15:00+08:00"
                       canPay: true
-        "400":
-          description: 锁单失败
+        "409":
+          description: 锁单资源状态冲突
           content:
             application/json:
               schema:
@@ -512,7 +514,7 @@ paths:
                       teamStatus: COMPLETE
                       paidAt: "2026-05-25T10:02:00+08:00"
                       completed: true
-        "400":
+        "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -545,7 +547,7 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/RefundSuccess"
-        "400":
+        "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -743,7 +745,7 @@ paths:
                       orderStatus: REFUNDED
                       teamStatus: COMPLETE_AFTER_REFUND
                       refundedAt: "2026-05-25T11:00:00+08:00"
-        "400":
+        "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "403":
           $ref: "#/components/responses/Forbidden"
@@ -1585,7 +1587,7 @@ components:
                   orderId: ORD-20260525-0001
                 traceId: trace-order-404
     TradeInvalidStatus:
-      description: 订单状态不允许当前操作
+      description: 订单状态冲突，不允许当前操作
       content:
         application/json:
           schema:
@@ -1599,6 +1601,19 @@ components:
                   orderId: ORD-20260525-0001
                   currentStatus: REFUNDED
                 traceId: trace-trade-status-001
+    InternalServerError:
+      description: 系统异常
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            systemError:
+              value:
+                code: SYSTEM_ERROR
+                message: 系统繁忙，请稍后重试
+                data: null
+                traceId: trace-system-500
 
   examples:
     AuthSessionSuccess:
@@ -1987,9 +2002,14 @@ components:
   schemas:
     ApiResponse:
       type: object
+      description: >
+        统一响应信封。M1 契约固定为 code/message/data/traceId；
+        后续所有成功和失败响应都必须通过本信封或 allOf 派生 schema 表达。
+        响应消息字段只允许使用 message，不保留旧项目 info 或 msg 等兼容别名。
       required:
         - code
         - message
+        - data
         - traceId
       properties:
         code:
@@ -1998,25 +2018,92 @@ components:
           example: "0000"
         message:
           type: string
-          description: 面向前端展示或日志定位的中文信息。
+          description: 面向前端展示或日志定位的中文信息。message 是唯一响应消息字段，不保留 info、msg 等别名。
           example: 成功
         data:
-          nullable: true
-          description: 具体响应数据，由接口定义决定。
+          description: 成功时承载业务数据；无返回数据时为 null 或布尔结果；失败时为 null 或 ErrorDetail。
         traceId:
           type: string
-          description: 请求追踪 ID。
+          description: 请求追踪 ID。响应、日志和后台审计必须使用同一值。
           example: trace-20260525-001
     ErrorResponse:
+      description: >
+        统一错误响应。错误响应仍使用 ApiResponse 信封：
+        code 为 ErrorCode，message 为中文错误说明，data 可为 null；
+        需要前端定位字段、资源或状态时，data 使用 ErrorDetail。
+        HTTP 状态必须表达协议层语义，例如 400/401/403/404/409/500；
+        body 不因错误类型改变，仍固定使用 code/message/data/traceId。
       allOf:
         - $ref: "#/components/schemas/ApiResponse"
         - type: object
+          required:
+            - code
+            - message
+            - data
+            - traceId
           properties:
             code:
               $ref: "#/components/schemas/ErrorCode"
             data:
-              nullable: true
-              description: 错误上下文，例如字段名、订单号或活动号。
+              description: 失败上下文；没有可安全暴露的上下文时为 null。
+              $ref: "#/components/schemas/ErrorDetail"
+    ErrorDetail:
+      type: object
+      nullable: true
+      description: >
+        错误详情对象。仅放入可安全暴露给前端和 Mock 的定位信息；
+        不返回异常堆栈、SQL、Redis key 或内部类名。字段不足时可用 details 承载扩展上下文。
+      additionalProperties: true
+      properties:
+        field:
+          type: string
+          description: 参数或表单字段名。
+          example: username
+        reason:
+          type: string
+          description: 失败原因或校验说明。
+          example: 用户名长度必须为 4 到 20 位
+        resourceType:
+          type: string
+          description: 资源类型。
+          example: ORDER
+        resourceId:
+          type: string
+          description: 资源 ID。
+          example: ORD-20260525-0001
+        activityId:
+          type: integer
+          format: int64
+          description: 活动 ID。
+          example: 20001
+        orderId:
+          type: string
+          description: 订单号。
+          example: ORD-20260525-0001
+        teamId:
+          type: string
+          description: 队伍号。
+          example: TEAM-20260525-001
+        tagId:
+          type: string
+          description: 标签 ID。
+          example: TAG-VIP-001
+        currentStatus:
+          type: string
+          description: 当前状态。
+          example: REFUNDED
+        expectedStatus:
+          type: string
+          description: 期望状态。
+          example: PAID
+        retryable:
+          type: boolean
+          description: 前端或治理端是否可以提示重试。
+          example: false
+        details:
+          type: object
+          description: 其他结构化上下文。
+          additionalProperties: true
     ErrorCode:
       type: string
       description: 项目错误码。实现时可以扩展，但不得改变已有语义。
@@ -2042,6 +2129,9 @@ components:
         - SYSTEM_ERROR
     PageResponse:
       type: object
+      description: >
+        统一分页数据结构。所有分页响应必须放在 ApiResponse.data 中，
+        并固定使用 pageNo/pageSize/total/items；不再新增 list、records 等并行字段。
       required:
         - pageNo
         - pageSize
@@ -2050,16 +2140,23 @@ components:
       properties:
         pageNo:
           type: integer
+          minimum: 1
+          description: 当前页码，从 1 开始。
           example: 1
         pageSize:
           type: integer
+          minimum: 1
+          description: 每页数量。
           example: 10
         total:
           type: integer
           format: int64
+          minimum: 0
+          description: 符合条件的总条数。
           example: 1
         items:
           type: array
+          description: 当前页数据列表，具体元素类型由派生 schema 覆盖。
           items:
             type: object
 

@@ -101,7 +101,7 @@
 | --- | --- |
 | 参考依据 | 旧项目 `Response`、`ResponseCode`；新文档 `openapi.yaml` 最小骨架 |
 | 目标落地 | `docs/plan/openapi.yaml`、`docs/plan/08-contract-alignment.md`、OpenAPI 示例 |
-| 实现要点 | 定义 `code`、`message`、`data`、`traceId`；分页结构统一为 `pageNo/pageSize/total/items`；错误响应也返回同一结构；时间统一 ISO-8601 字符串 |
+| 实现要点 | 定义 `code`、`message`、`data`、`traceId`；`message` 是唯一响应消息字段，禁止 `info`、`msg` 等别名；分页结构统一为 `pageNo/pageSize/total/items`；错误响应也返回同一结构，并通过 400/401/403/404/409/500 等 HTTP 状态表达协议层语义；时间统一 ISO-8601 字符串 |
 | 验收标准 | OpenAPI 能表达成功和失败响应；前后端不再各自定义返回体 |
 | 验证方式 | OpenAPI lint；手动检查所有接口引用统一 `ApiResponse` |
 | 建议提交 | `docs: define unified api response contract` |

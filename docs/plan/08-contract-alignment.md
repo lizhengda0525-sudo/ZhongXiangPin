@@ -19,7 +19,21 @@ M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映�
 | 任务执行和漂移控制 | `docs/sdd/tasks.md` | Agent、PR、任务验收 |
 | 前端 Mock 规则 | `docs/sdd/mock/strategy.md` | 用户端、管理端 |
 
-## 4. OpenAPI 验证
+## 4. 统一响应契约
+
+`ZXP-CONTRACT-001` 固定以下响应契约，后续 OpenAPI、Mock、前端类型和 M3 后端 DTO 都必须沿用：
+
+- 所有接口响应都使用统一信封：`code/message/data/traceId`。
+- 成功响应 `code` 为 `"0000"`，`message` 为 `成功`，`data` 承载业务数据；无业务数据时 `data` 为 `null` 或明确的布尔结果。
+- 失败响应也使用同一信封，`code` 使用 `ErrorCode`，`message` 使用中文错误说明，`data` 为 `null` 或 `ErrorDetail`。`ErrorDetail` 只放字段名、资源 ID、当前状态、可重试标记等安全上下文，不暴露异常堆栈、SQL、Redis key 或内部类名。
+- `traceId` 是必填字段，必须贯穿 API 响应、日志和后台审计；Mock 示例也必须提供稳定可读的 `traceId`。
+- 分页数据只能放在 `data` 下，并固定为 `pageNo/pageSize/total/items`，不再新增 `list`、`records` 等并行字段。
+- 时间字段统一为 ISO-8601 字符串，并在 OpenAPI 中使用 `type: string` + `format: date-time`。
+- `message` 是唯一响应消息字段。旧项目返回字段名为 `info`，新契约统一改为 `message`；这是面向前端和 M3 DTO 的主动命名收敛，新项目禁止保留 `info`、`msg` 或其他兼容别名。
+- HTTP 状态必须与错误类型一致：参数错误使用 400，未登录使用 401，权限不足使用 403，资源不存在使用 404，幂等冲突、非法状态、队伍已满等资源状态冲突使用 409，系统异常使用 500。错误 body 仍然使用 `code/message/data/traceId` 信封，不允许为了统一 body 把所有错误都返回 200。
+- M3 后端 `ExceptionHandler` 必须同时设置正确 HTTP 状态和统一 body；M9/M10 前端解包必须同时读取 HTTP 状态与 `code/message/data/traceId`，并且只读取 `message`；Mock 示例必须同时模拟 HTTP 状态和统一 body，禁止使用 `info` 或只返回 200。
+
+## 5. OpenAPI 验证
 
 推荐使用 Redocly CLI 做 lint。当前仓库尚未固定 Node 工具链时，可以用 `npx` 临时执行；建立前端工程后，应把命令固化到 `package.json` 或 CI。
 
@@ -31,13 +45,14 @@ npx --yes @redocly/cli lint docs/plan/openapi.yaml
 
 - `paths` 中 P0 端点全部可被解析。
 - 所有成功和失败响应使用 `ApiResponse<T>` 或同构信封。
+- 失败响应的 HTTP 状态与错误类型一致，且 body 仍包含 `code/message/data/traceId`。
 - 分页响应使用 `PageResponse<T>` 形状。
 - P0 端点至少有一个成功示例；高风险端点必须有代表性失败示例。
 - 新增枚举值不得改变旧值语义。
 
 如果本地无法联网安装 CLI，需要在任务总结中说明原因，并至少手工检查 YAML 结构、端点响应引用、示例字段和枚举值。
 
-## 5. Mock 示例检查
+## 6. Mock 示例检查
 
 Mock 数据必须从 OpenAPI 的 schema 和 examples 派生，或手工逐项校验一致。
 
@@ -45,6 +60,7 @@ Mock 数据必须从 OpenAPI 的 schema 和 examples 派生，或手工逐项校
 
 - Mock 返回形状与真实 API 客户端一致，不绕过 `ApiResponse<T>` 解包规则。
 - Mock 字段名、枚举值、时间格式、金额单位与 OpenAPI 一致。
+- Mock 不得返回 `info`、`msg` 等响应消息别名；失败响应必须同时模拟 HTTP 状态和统一 body。
 - Mock ID 稳定可读，例如 `ORD-MOCK-001`、`TEAM-MOCK-001`。
 - 高风险场景至少覆盖 401、403、参数错误、重复幂等键、非法状态和资源不存在。
 - Mock 切换到真实 HTTP 只改数据源或环境变量，不改页面业务逻辑。
@@ -58,7 +74,7 @@ npm run build
 
 如果使用 Mock fixture 文件，可增加轻量脚本校验字段名和枚举值；不要为了校验引入复杂 Mock 服务框架。
 
-## 6. 前端类型规则
+## 7. 前端类型规则
 
 优先路线：
 
@@ -70,12 +86,13 @@ npm run build
 
 手写类型最低要求：
 
-- `ApiResponse<T>`、分页结构、状态枚举集中定义。
+- `ApiResponse<T>` 必须包含 `code/message/data/traceId`，分页结构和状态枚举集中定义。
+- 前端统一从 `message` 展示错误信息，禁止读取或透传 `info`、`msg` 等旧别名；错误处理必须保留 HTTP 状态分支。
 - 订单、队伍、任务、活动、标签、退款来源等状态只能从集中枚举导出。
 - 不新增隐式 `any`。
 - 前端不把 `userId` 作为交易归属依据，归属以后端登录态为准。
 
-## 7. 枚举和状态映射
+## 8. 枚举和状态映射
 
 | OpenAPI schema | 允许值 | 数据库字段 | 说明 |
 | --- | --- | --- | --- |
@@ -97,7 +114,7 @@ npm run build
 - 数据库只保存稳定枚举值，不保存前端展示文案。
 - 如果新增状态，必须同时更新 OpenAPI、migration 或下一版 migration、前端枚举、Mock 数据和状态机测试。
 
-## 8. 关键字段映射
+## 9. 关键字段映射
 
 | OpenAPI 字段 | 数据库字段 | 约束 |
 | --- | --- | --- |
@@ -121,7 +138,7 @@ npm run build
 | `operatorId`、`operatorName` | `admin_operation_log.operator_id`、`admin_operation_log.operator_name` | 后台写操作必须记录。 |
 | `traceId` | `admin_operation_log.trace_id`，API 响应信封字段 | 用于联动接口响应、日志和审计。 |
 
-## 9. 变更检查清单
+## 10. 变更检查清单
 
 影响 API、数据库或前端类型的任务提交前必须检查：
 

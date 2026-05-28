@@ -70,17 +70,23 @@ M1 可以补齐 OpenAPI examples 和前端内存 Mock 的数据形状，但不�
 
 ## 前端 Mock 契约规则
 
-- Mock 函数返回 `Promise<ApiResponse<T>>`，或返回与真实客户端封装一致的解包类型。
+- Mock 函数返回 `Promise<ApiResponse<T>>`，或返回与真实客户端封装一致的解包类型；`ApiResponse<T>` 固定包含 `code/message/data/traceId`。
+- Mock 成功响应使用 `code="0000"` 和 `message="成功"`；失败响应也必须带 `code/message/data/traceId`，其中 `data` 可以为 `null`，也可以是 `ErrorDetail` 形状的字段、资源或状态上下文。
+- Mock 不得返回旧项目的 `info` 字段，也不得新增 `msg` 等响应消息别名；前端错误提示统一读取 `message`。
+- Mock 失败响应必须同时模拟真实 HTTP 状态和统一 body，例如参数错误为 400、未登录为 401、权限不足为 403、资源不存在为 404、状态冲突为 409、系统异常为 500；不得为了简化 Mock 把失败场景全部包装成 HTTP 200。
+- Mock 分页数据固定放在 `data.pageNo/pageSize/total/items`，不新增 `list`、`records` 等并行字段。
 - Mock 状态字符串必须来自集中枚举或类型定义。
 - Mock ID 要稳定且可读，例如 `ORD-MOCK-001`。
 - Mock 时间值使用 ISO-8601 字符串。
+- Mock `traceId` 要稳定可读，例如 `trace-mock-order-list-001`，用于和页面错误提示、日志或后台审计样例串联。
 - 不要只在 Mock 里编码业务规则。如果 Mock 需要某条规则，后端 SDD 必须描述同一条规则。
 
 ## 后端本地 Mock 规则
 
 - 支付模拟可以是 local-only。
 - Debug 端点只允许在 `local` profile 注册。
-- 本地 Mock 响应仍必须使用 `ApiResponse`。
+- 本地 Mock 响应仍必须使用 `ApiResponse`，且失败响应必须设置对应 HTTP 状态。
+- 本地 Mock 响应消息字段只允许使用 `message`，禁止兼容 `info` 或 `msg`。
 - Mock 端点不能在生产路径绕过归属校验、状态机或幂等检查。
 
 ## 契约更新检查清单
