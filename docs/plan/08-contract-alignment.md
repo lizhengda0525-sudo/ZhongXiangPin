@@ -6,16 +6,20 @@
 
 本文只记录 P0 必须遵守的轻量规则，不替代 OpenAPI、SDD 或 migration。新增接口、字段、枚举或表结构时，优先更新源文件，再更新本文中的映射。
 
-## 2. 单一事实源
+## 2. 阶段边界
+
+M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映射，不创建后端 Java DTO 或模块。M2 只允许修改 migration、种子数据约束和本文映射，不创建 Mapper、Repository 或领域代码。M3 后端骨架建立后，后端 DTO、领域枚举、Mapper 字段才开始跟随 OpenAPI 和 migration 落地。
+
+## 3. 单一事实源
 
 | 内容 | 单一事实源 | 使用方 |
 | --- | --- | --- |
-| API 路径、请求、响应、错误码、示例 | `docs/plan/openapi.yaml` | 后端 Controller/DTO、前端 API 类型、Mock 数据 |
-| 表、字段、索引、唯一键 | `deploy/migration/V1__init_schema.sql` 和后续 migration | 后端持久化、Mapper、测试数据 |
+| API 路径、请求、响应、错误码、示例 | `docs/plan/openapi.yaml` | 前端 API 类型、Mock 数据、M3 后端 Controller/DTO |
+| 表、字段、索引、唯一键、状态持久化 | `deploy/migration/V1__init_schema.sql` 和后续 migration | M3 后端持久化、Mapper、测试数据 |
 | 任务执行和漂移控制 | `docs/sdd/tasks.md` | Agent、PR、任务验收 |
 | 前端 Mock 规则 | `docs/sdd/mock/strategy.md` | 用户端、管理端 |
 
-## 3. OpenAPI 验证
+## 4. OpenAPI 验证
 
 推荐使用 Redocly CLI 做 lint。当前仓库尚未固定 Node 工具链时，可以用 `npx` 临时执行；建立前端工程后，应把命令固化到 `package.json` 或 CI。
 
@@ -33,7 +37,7 @@ npx --yes @redocly/cli lint docs/plan/openapi.yaml
 
 如果本地无法联网安装 CLI，需要在任务总结中说明原因，并至少手工检查 YAML 结构、端点响应引用、示例字段和枚举值。
 
-## 4. Mock 示例检查
+## 5. Mock 示例检查
 
 Mock 数据必须从 OpenAPI 的 schema 和 examples 派生，或手工逐项校验一致。
 
@@ -54,7 +58,7 @@ npm run build
 
 如果使用 Mock fixture 文件，可增加轻量脚本校验字段名和枚举值；不要为了校验引入复杂 Mock 服务框架。
 
-## 5. 前端类型规则
+## 6. 前端类型规则
 
 优先路线：
 
@@ -62,7 +66,7 @@ npm run build
 2. 前端骨架稳定后，优先用 OpenAPI 生成类型，生成物放在明确目录，例如 `src/api/generated`。
 3. 生成物不得手工修改；需要适配时在 `src/api` 包装层处理。
 4. 用户端和管理端共享同一套枚举值，不各自写魔法字符串。
-5. 任何 API 字段变更必须同步更新 OpenAPI、前端类型、Mock 数据和后端 DTO。
+5. 任何 API 字段变更必须同步更新 OpenAPI、前端类型和 Mock 数据；M3 后还必须同步后端 DTO。
 
 手写类型最低要求：
 
@@ -71,7 +75,7 @@ npm run build
 - 不新增隐式 `any`。
 - 前端不把 `userId` 作为交易归属依据，归属以后端登录态为准。
 
-## 6. 枚举和状态映射
+## 7. 枚举和状态映射
 
 | OpenAPI schema | 允许值 | 数据库字段 | 说明 |
 | --- | --- | --- | --- |
@@ -89,11 +93,11 @@ npm run build
 
 实现规则：
 
-- 后端枚举值必须与 OpenAPI 字符串完全一致。
+- M3 后端枚举值必须与 OpenAPI 字符串完全一致。
 - 数据库只保存稳定枚举值，不保存前端展示文案。
 - 如果新增状态，必须同时更新 OpenAPI、migration 或下一版 migration、前端枚举、Mock 数据和状态机测试。
 
-## 7. 关键字段映射
+## 8. 关键字段映射
 
 | OpenAPI 字段 | 数据库字段 | 约束 |
 | --- | --- | --- |
@@ -117,7 +121,7 @@ npm run build
 | `operatorId`、`operatorName` | `admin_operation_log.operator_id`、`admin_operation_log.operator_name` | 后台写操作必须记录。 |
 | `traceId` | `admin_operation_log.trace_id`，API 响应信封字段 | 用于联动接口响应、日志和审计。 |
 
-## 8. 变更检查清单
+## 9. 变更检查清单
 
 影响 API、数据库或前端类型的任务提交前必须检查：
 
@@ -125,7 +129,7 @@ npm run build
 - migration 是否已有字段、唯一键、索引和状态字段；已合并 migration 不直接修改，只新增下一版。
 - 本文枚举和关键字段映射是否仍然准确。
 - 前端类型和 Mock 数据是否同步。
-- 后端 DTO、领域枚举、Mapper 字段是否与 OpenAPI 和 migration 一致。
+- 如果任务已进入 M3 或后续阶段，后端 DTO、领域枚举、Mapper 字段是否与 OpenAPI 和 migration 一致。
 - 高风险变更是否补充测试或手工验收记录。
 
 PR 或任务总结中建议增加：

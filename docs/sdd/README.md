@@ -8,7 +8,7 @@
 
 | 文档 | 范围 | 主要任务 |
 | --- | --- | --- |
-| `backend/spec.md` | 后端模块、契约、migration、领域规则、运行态治理 | `ZXP-CONTRACT-*`、`ZXP-DB-*`、`ZXP-BE-*`、`ZXP-QA-001`、`ZXP-QA-002` |
+| `backend/spec.md` | M3 后端模块、横切契约、领域规则、运行态治理和持久化实现边界 | `ZXP-BE-*`、`ZXP-QA-001`、`ZXP-QA-002`；读取 `ZXP-CONTRACT-*` 和 `ZXP-DB-*` 作为输入 |
 | `frontend-user/spec.md` | 用户端 Web、登录、会场、结算、支付、订单和退款流程 | `ZXP-FE-USER-*`、用户端相关 OpenAPI 任务 |
 | `frontend-admin/spec.md` | 管理端 Web、活动/标签/订单/任务/DCC/线程池治理 | `ZXP-FE-ADMIN-*`、管理端 OpenAPI 任务 |
 | `mock/strategy.md` | Mock 数据、本地调试接口、契约示例和并行开发策略 | `ZXP-CONTRACT-*`、前端壳层任务、联调任务 |
@@ -19,8 +19,10 @@
 - SDD 是新项目实现决策的依据。
 - Harness 只作为旧行为证据来源。
 - OpenAPI 是前后端共享契约。
+- migration 是表结构、唯一键、状态持久化和 MySQL 交易事实源。
 - OpenAPI、Mock、前端类型和 migration 状态字段的轻量对齐规则见 `docs/plan/08-contract-alignment.md`。
 - 契约、状态、错误码和验证方式不明确的任务，不能进入实现。
+- M1/M2 不落地后端 Java 代码；M3 才开始创建后端工程骨架。
 - 任何影响 API、数据库或状态机的 SDD 变更，都必须同步更新相关规划文档或任务说明。
 
 ## Agent 交接格式

@@ -7,10 +7,12 @@
 核心原则：
 
 - 契约先行，前后端以 OpenAPI 为准。
+- 数据先行，表结构、唯一键、索引和状态持久化以 migration 为准。
 - 领域层保持纯粹，不依赖 Web、MyBatis、Redis 或前端 DTO。
 - 用例编排和领域规则分离。
 - 基础设施只负责技术实现，不承载业务决策。
 - Debug 和 Mock 能力只在本地开发环境启用。
+- MySQL 是交易事实源，Redis 只承载缓存、占位和运行态。
 
 ## 目标目录
 
@@ -54,21 +56,21 @@ zhongxiangpin/
     release-notes/
 ```
 
-当前阶段只要求文档、契约和 migration 先统一。`backend/`、`frontend/user-web/` 和 `frontend/admin-web/` 可以在对应骨架任务开始前保持为空目录。
+当前阶段只要求文档、契约和 migration 先统一。M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码。`backend/`、`frontend/user-web/` 和 `frontend/admin-web/` 可以在对应骨架任务开始前保持为空目录。
 
 目录职责：
 
 | 目录 | 职责 | 进入实现前的状态 |
 | --- | --- | --- |
-| `docs/` | 保存规划、SDD、Harness、OpenAPI、验证和后续 ADR，是开发前的事实源。 | 必须先统一。 |
-| `deploy/` | 保存 migration、环境模板、发布说明和回滚资料。 | 已有 V1 migration 初稿。 |
+| `docs/` | 保存规划、SDD、Harness、OpenAPI、验证和后续 ADR，是开发前的规划和契约来源。 | 必须先统一。 |
+| `deploy/` | 保存 migration、环境模板、发布说明和回滚资料；migration 是数据事实源。 | 已有 V1 migration 初稿。 |
 | `backend/` | 后续保存 Java 17 Spring Boot Maven 多模块。 | 等 `ZXP-BE-SKEL-001` 开始后落地。 |
 | `frontend/user-web/` | 后续保存 Vue 3 用户端工程。 | 等 `ZXP-FE-USER-001` 开始后落地。 |
 | `frontend/admin-web/` | 后续保存 Vue 3 管理端工程。 | 等 `ZXP-FE-ADMIN-001` 开始后落地。 |
 
 ## 后端模块
 
-后续后端建议按 Maven 多模块组织：
+M3 开始后，后端建议按 Maven 多模块组织：
 
 ```text
 backend/
@@ -83,7 +85,7 @@ backend/
 
 模块职责：
 
-- `contract`：OpenAPI、DTO、接口错误码和状态枚举。
+- `contract`：根据 OpenAPI 落地 DTO、接口错误码和状态枚举。
 - `common`：统一响应、分页、异常、审计上下文和基础工具。
 - `domain`：业务模型、状态机、领域规则和领域服务接口。
 - `application`：用例编排，组合领域服务和仓储端口完成业务流程。

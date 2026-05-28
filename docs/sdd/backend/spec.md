@@ -4,7 +4,7 @@
 
 把后端重构为清晰的 Java 17 Spring Boot 多模块系统，在保留旧项目业务行为的基础上，强化契约纪律、领域边界、幂等、事务安全和运行态治理。
 
-## 实现目标
+## M3 后实现目标
 
 ```text
 backend/
@@ -16,6 +16,10 @@ backend/
   zhongxiangpin-trigger
   zhongxiangpin-app
 ```
+
+## 阶段边界
+
+本文描述的是 M3 后端骨架及后续业务实现的目标结构。`ZXP-CONTRACT-*` 和 `ZXP-DB-*` 是后端实现的输入，不代表在 M1/M2 提前创建 Java 模块。M1 只固定 OpenAPI、Mock 示例、错误码和状态枚举；M2 只固定 migration、唯一键、索引、状态字段和 MySQL 交易事实源；M3 才开始创建 `backend/zhongxiangpin-*` 模块和基础代码。
 
 ## 必读输入
 
@@ -115,6 +119,8 @@ INIT -> PROCESSING -> FAILED -> RETRY_WAIT -> PROCESSING
 
 migration 放在 `deploy/migration`，合并后不可修改，只能新增下一版。
 
+MySQL 是交易事实源，队伍、订单、支付、退款、可靠事件、审计和标签批次的最终状态必须能从 migration 定义的表结构中恢复。Redis 只承载缓存、占位和运行态，不能替代 MySQL 的唯一键、条件更新和状态持久化。
+
 首批必要表：
 
 | 范围 | 表 | 必要约束 |
@@ -207,6 +213,6 @@ Harness 文件：
 
 - 在 `backend` 下执行 `mvn test` 通过。
 - local profile 下 `/api/v1/health` 返回 app/db/redis 状态。
-- OpenAPI 与后端 DTO 对齐。
+- OpenAPI 与 M3 后落地的后端 DTO 对齐。
 - 后台活动、标签、订单、任务、DCC、线程池和审计治理可用。
 - `docs/plan/05-validation.md` 中的高风险场景有测试或验收记录。

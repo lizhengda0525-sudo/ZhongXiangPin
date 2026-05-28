@@ -13,8 +13,10 @@
 
 每个任务建议按以下标准完成：
 
-- 先更新或确认 `docs/plan/openapi.yaml`、状态枚举、错误码和数据表设计。
-- 再写领域模型、用例编排、基础设施适配、HTTP 入口和测试。
+- M1 只更新或确认 `docs/plan/openapi.yaml`、状态枚举、错误码、Mock 示例和字段映射，不创建后端 Java 模块。
+- M2 只更新或确认 migration、表结构、唯一键、索引、状态持久化和数据事实源，不创建 Mapper、Repository 或领域代码。
+- 从 M3 后端骨架开始，再落地 Maven 模块、统一响应、异常处理、基础配置和健康检查。
+- 从 M4 业务任务开始，再写领域模型、用例编排、基础设施适配、HTTP 入口和测试。
 - 每个任务只提交一个可验证增量。
 - 所有高风险任务必须有验收用例，尤其是身份、金额、状态机、并发和补偿。
 - 每个实现任务记录 Harness 证据：旧文件、提取行为、隐性约束、新实现决策和偏差。
@@ -35,16 +37,18 @@
 | 里程碑 | 目标 | 可展示价值 |
 | --- | --- | --- |
 | M0 项目治理 | 文档、契约、任务清单、Git 规范成型 | 展示需求拆解和工程规划能力 |
-| M1 契约与模型 | OpenAPI、错误码、状态枚举、核心表结构确定 | 展示契约先行和领域建模能力 |
-| M2 后端骨架 | Maven 多模块、统一响应、异常、鉴权、配置启动 | 展示清晰分层和基础工程能力 |
-| M3 认证与权限 | 用户登录态、管理员权限、审计上下文 | 展示身份可信和越权防护 |
-| M4 会场与试算 | 多商品会场、折扣、标签、缓存 | 展示营销规则建模和高频读优化 |
-| M5 交易闭环 | 开团、参团、锁单、支付、退款、订单 | 展示交易状态机、幂等和并发控制 |
-| M6 运行态治理 | 超时关单、过期队伍、补偿、巡检、通知 | 展示最终一致和自愈能力 |
-| M7 管理后台 API | 活动、标签、订单、任务、DCC、线程池、审计 | 展示业务治理平台能力 |
-| M8 用户端 | 登录、会场、详情、结算、支付结果、订单 | 展示完整用户体验闭环 |
-| M9 管理端 | 治理页面、类型化接口、操作反馈 | 展示运营后台产品化能力 |
-| M10 质量与发布 | 自动化测试、CI、tag、发布和回滚 | 展示企业级交付能力 |
+| M1 契约与模型 | OpenAPI、错误码、状态枚举、Mock 示例和字段映射 | 展示契约先行和领域建模能力 |
+| M2 数据库与 migration | 用户、商品、活动、交易、可靠事件、标签和审计表 | 展示交易事实源和一致性建模能力 |
+| M3 后端骨架 | Maven 多模块、统一响应、异常、配置和健康检查 | 展示清晰分层和基础工程能力 |
+| M4 认证与权限 | 用户登录态、管理员权限、审计上下文 | 展示身份可信和越权防护 |
+| M5 会场与试算 | 多商品会场、折扣、标签、缓存 | 展示营销规则建模和高频读优化 |
+| M6 交易闭环 | 开团、参团、锁单、支付、退款、订单 | 展示交易状态机、幂等和并发控制 |
+| M7 运行态治理 | 超时关单、过期队伍、补偿、巡检、通知 | 展示最终一致和自愈能力 |
+| M8 管理后台 API | 活动、标签、订单、任务、DCC、线程池、审计 | 展示业务治理平台能力 |
+| M9 用户端 | 登录、会场、详情、结算、支付结果、订单 | 展示完整用户体验闭环 |
+| M10 管理端 | 治理页面、类型化接口、操作反馈 | 展示运营后台产品化能力 |
+| M11 测试矩阵与验收 | 自动化测试、并发一致性、前端质量、端到端验收 | 展示高风险场景验证能力 |
+| M12 Git、CI、发布 | CI、tag、发布和回滚 | 展示企业级交付能力 |
 
 ## 3. M0 项目治理与文档
 
@@ -96,7 +100,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 旧项目 `Response`、`ResponseCode`；新文档 `openapi.yaml` 最小骨架 |
-| 目标落地 | `backend/zhongxiangpin-contract`、`docs/plan/openapi.yaml` |
+| 目标落地 | `docs/plan/openapi.yaml`、`docs/plan/08-contract-alignment.md`、OpenAPI 示例 |
 | 实现要点 | 定义 `code`、`message`、`data`、`traceId`；分页结构统一为 `pageNo/pageSize/total/items`；错误响应也返回同一结构；时间统一 ISO-8601 字符串 |
 | 验收标准 | OpenAPI 能表达成功和失败响应；前后端不再各自定义返回体 |
 | 验证方式 | OpenAPI lint；手动检查所有接口引用统一 `ApiResponse` |
@@ -107,10 +111,10 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | `AuthController`：注册、发送验证码、密码登录、验证码登录、当前用户、登出；`AuthServiceImpl`：用户名规则、手机号规则、Redis session |
-| 目标落地 | `openapi.yaml`、`contract/auth` DTO |
+| 目标落地 | `docs/plan/openapi.yaml`、认证 schema 命名约定、认证 Mock 示例 |
 | 实现要点 | 接口包括 `POST /api/v1/auth/register`、`POST /api/v1/auth/code`、`POST /api/v1/auth/login/password`、`POST /api/v1/auth/login/code`、`GET /api/v1/auth/me`、`POST /api/v1/auth/logout`；登录返回 token 和最小用户信息；管理员端复用登录接口但要校验角色 |
 | 验收标准 | 用户端和管理端都能基于契约生成或手写类型 |
-| 验证方式 | DTO 字段与 OpenAPI 示例一致；登录失败场景有错误码 |
+| 验证方式 | schema 字段与 OpenAPI 示例一致；登录失败场景有错误码 |
 | 建议提交 | `docs: add auth api contract` |
 
 ### ZXP-CONTRACT-003 定义会场和试算接口
@@ -118,7 +122,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | `MarketController`、`MarketServiceImpl`、用户端 `userApi.queryActivityList` 和 `queryMarket` |
-| 目标落地 | `openapi.yaml`、`contract/market` DTO |
+| 目标落地 | `docs/plan/openapi.yaml`、会场 schema 命名约定、会场 Mock 示例 |
 | 实现要点 | 接口包括会场分页列表、商品详情或试算；列表返回商品、活动、拼团价、统计和 top teams；试算返回价格快照、活动快照、命中状态和可参团队伍；后端 userId 来源以后端 session 为准 |
 | 验收标准 | 前端无需拼装复杂业务数据即可展示会场和详情 |
 | 验证方式 | Mock 示例覆盖普通活动、标签未命中、活动过期、无可参团队伍 |
@@ -129,7 +133,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | `TradeController`、`OrderController`、`TradeServiceImpl`、用户端订单类型 |
-| 目标落地 | `openapi.yaml`、`contract/trade`、`contract/order` DTO |
+| 目标落地 | `docs/plan/openapi.yaml`、交易/订单 schema 命名约定、幂等失败 Mock 示例 |
 | 实现要点 | 锁单接口使用 `clientOrderNo`；支付接口使用 `payNo`；退款接口使用 `refundNo`、`refundSource`、`reason`；订单列表只查询当前用户；订单详情必须归属校验；Debug 接口只允许 local profile |
 | 验收标准 | 交易链路中每个外部请求都有幂等键和可回放响应定义 |
 | 验证方式 | OpenAPI 示例覆盖重复锁单、重复支付、重复退款 |
@@ -140,7 +144,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 管理端 `admin.ts`：task、activity、dcc、tag、order、threadPool 接口；后台规划文档 |
-| 目标落地 | `openapi.yaml`、`contract/admin` DTO |
+| 目标落地 | `docs/plan/openapi.yaml`、后台治理 schema 命名约定、后台 Mock 示例 |
 | 实现要点 | 活动配置、SKU 绑定、标签任务保存/更新/执行/命中检查、订单列表/详情/退款、通知任务/补偿任务列表/详情/执行/重试、DCC 配置、线程池配置、审计日志查询；所有写操作记录 operator |
 | 验收标准 | 管理端不再使用 `any`，所有列表、表单和操作弹窗都有类型依据 |
 | 验证方式 | TypeScript 类型检查不依赖隐式 any；OpenAPI 示例覆盖分页和操作失败 |
@@ -151,11 +155,11 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 旧项目 `TradeOrderStatus`、`GroupBuyOrderStatus`、`NotifyTaskStatus`、`TradeCompensationTaskStatus`、`UserRole`、`ResponseCode` |
-| 目标落地 | `common/enums`、`contract/schemas`、前端共享类型 |
+| 目标落地 | `docs/plan/openapi.yaml`、`docs/plan/08-contract-alignment.md`、前后端枚举命名约定 |
 | 实现要点 | 订单状态只允许 `WAIT_PAY/PAID/REFUNDED/CLOSED_TIMEOUT`；队伍状态只允许 `PROGRESS/COMPLETE/EXPIRED_UNFORMED/COMPLETE_AFTER_REFUND`；任务状态定义 `INIT/PROCESSING/SUCCESS/FAILED/RETRY_WAIT`；错误码按认证、会场、交易、后台、系统分段 |
 | 验收标准 | 状态机和前端展示使用同一套枚举，不写魔法字符串 |
-| 验证方式 | 单测检查枚举值不被误改；前端状态文案集中映射 |
-| 建议提交 | `feat: define status enums and error codes` |
+| 验证方式 | OpenAPI 枚举值、错误码分段和契约对齐映射一致；后续 M3/M9/M10 再落地 Java/TypeScript 枚举 |
+| 建议提交 | `docs: define status enums and error codes` |
 
 ## 5. M2 数据库与 migration
 
@@ -164,7 +168,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 旧项目 `user_account`、`AuthServiceImpl` 的 username/phone/passwordHash/role/status |
-| 目标落地 | `deploy/migration`、`infrastructure/persistence` |
+| 目标落地 | `deploy/migration`、`docs/plan/08-contract-alignment.md` |
 | 实现要点 | 表包括 `user_account`、可选 `admin_operation_log`；username、phone 唯一；密码只存 bcrypt hash；role 区分 USER/ADMIN；status 支持禁用；记录 create/update time |
 | 验收标准 | 支持密码登录、验证码登录自动创建账号、手机号绑定和管理员鉴权 |
 | 验证方式 | migration 空库执行成功；唯一键冲突可复现 |
@@ -175,7 +179,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 旧项目 `sku`、`sc_sku_activity`、`group_buy_activity`、`group_buy_discount`；`MarketServiceImpl` 试算行为 |
-| 目标落地 | `deploy/migration` |
+| 目标落地 | `deploy/migration`、`docs/plan/08-contract-alignment.md` |
 | 实现要点 | 商品表保存名称、图片、原价、分类；活动表保存 source/channel、targetCount、validTime、takeLimitCount、start/end/status、tagId、version；折扣表保存 marketPlan 和规则表达式；SKU 活动绑定表保存生效关系 |
 | 验收标准 | 一个商品能绑定一个或多个活动版本，试算能拿到稳定活动快照 |
 | 验证方式 | 初始化数据可支撑至少 3 个商品、2 类折扣、1 个标签活动 |
@@ -186,7 +190,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 旧项目 `group_buy_order`、`group_buy_order_list`、交易状态设计；新文档要求支付/退款独立记录 |
-| 目标落地 | `deploy/migration` |
+| 目标落地 | `deploy/migration`、`docs/plan/08-contract-alignment.md` |
 | 实现要点 | `team` 保存 targetCount、completeCount、lockCount、refundCount、status、validStart/End；`trade_order` 保存 orderId、clientOrderNo、userId、teamId、activityId、goodsId、occupyNo、价格快照、状态；`pay_record` 以 payNo 幂等；`refund_record` 以 refundNo 幂等并记录来源、原因、operator |
 | 验收标准 | MySQL 可以用唯一键和条件更新兜底防重复、防超卖 |
 | 验证方式 | 检查唯一键：`clientOrderNo+userId`、`orderId`、`teamId+occupyNo`、`payNo`、`refundNo` |
@@ -197,7 +201,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 旧项目 `notify_task`、`trade_compensation_task`、面试文档建议 Outbox + 补偿统一表 |
-| 目标落地 | `deploy/migration`、`domain/event` |
+| 目标落地 | `deploy/migration`、`docs/plan/08-contract-alignment.md` |
 | 实现要点 | 优先设计统一 `reliable_event`，用 `eventType/bizKey/status/retryCount/nextExecuteTime/payload/lastError` 承接成团通知、Redis 释放、队伍重建、超时修复、退款修复；如果第一版拆表，也要保持字段一致 |
 | 验收标准 | 所有不可丢的异步副作用都能落库、重试、查询和手动触发 |
 | 验证方式 | 唯一键 `eventType + bizKey`；payload 使用 JSON 对象序列化而不是字符串拼接 |
@@ -208,7 +212,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 旧项目 `crowd_tags`、`crowd_tags_job`、`crowd_tags_detail`；后台标签任务和审计规划 |
-| 目标落地 | `deploy/migration` |
+| 目标落地 | `deploy/migration`、`docs/plan/08-contract-alignment.md` |
 | 实现要点 | 标签主表保存 tagId、name、currentBatchId、statistics；任务表保存 ruleType、ruleExpr、status、batchId；明细表保存 tagId、batchId、userAccountId；审计表保存 operator、action、targetType、targetId、before/after、result |
 | 验收标准 | 标签任务可重跑，线上命中永远指向完整 currentBatchId；后台写操作可追溯 |
 | 验证方式 | 同 tagId 多 batch 不混淆；审计记录可按 operator 和 target 查询 |
@@ -734,9 +738,9 @@
 P0 按完整项目基础功能推进，建议按以下顺序执行：
 
 1. `ZXP-DOC-004`，先把开发规范、阿里巴巴 Java 开发手册约束和注释要求固化为门禁。
-2. `ZXP-CONTRACT-001` 到 `ZXP-CONTRACT-004`，先把前后端契约定住。
-3. `ZXP-DB-001` 到 `ZXP-DB-004`，保证数据模型支撑交易事实和补偿。
-4. `ZXP-BE-SKEL-001` 到 `ZXP-BE-SKEL-003`，让后端能启动。
+2. `ZXP-CONTRACT-001` 到 `ZXP-CONTRACT-006`，先把 OpenAPI、Mock 示例、错误码、状态枚举和字段映射定住，不落地后端 Java 代码。
+3. `ZXP-DB-001` 到 `ZXP-DB-005`，保证 migration 支撑交易事实、可靠事件、标签和审计，不落地 Mapper 或 Repository。
+4. `ZXP-BE-SKEL-001` 到 `ZXP-BE-SKEL-004`，从这里开始创建后端工程并让后端能启动。
 5. `ZXP-BE-AUTH-001`、`ZXP-BE-AUTH-003`，先解决身份可信。
 6. `ZXP-BE-MARKET-001`、`ZXP-BE-MARKET-002`、`ZXP-BE-MARKET-003`，跑通会场和试算。
 7. `ZXP-BE-TRADE-001` 到 `ZXP-BE-TRADE-006`，跑通交易主链路。

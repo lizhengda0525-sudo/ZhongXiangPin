@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: 众享拼 API
   version: 0.2.0
-  description: 众享拼 P0 接口契约。本文档是前后端、Mock、后端 DTO 和验收用例的共同依据。
+  description: 众享拼 P0 接口契约。本文档是前后端、Mock、M3 后落地的后端 DTO 和验收用例的共同依据。
 servers:
   - url: http://localhost:8091
     description: 本地开发服务

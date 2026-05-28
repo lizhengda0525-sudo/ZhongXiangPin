@@ -36,6 +36,12 @@ D:\ZXP\zhongxiangpin
 
 不要一次性把所有细节塞进当前上下文。只读取当前任务需要的文档和旧项目代码。
 
+阶段边界必须先确认：
+
+- M1 只固定 OpenAPI、错误码、状态枚举、Mock 示例和字段映射，不创建后端 Java 模块。
+- M2 只固定 migration、表结构、唯一键、索引、状态持久化和 MySQL 交易事实源，不创建 Mapper、Repository 或领域代码。
+- M3 才开始创建后端 Maven 多模块、统一响应、异常处理、基础配置和健康检查。
+
 ## 3. 旧项目参照规则
 
 旧项目用于参照：
@@ -70,7 +76,7 @@ D:\ZXP\zhongxiangpin
 5. 更新或确认 OpenAPI、错误码、状态枚举和数据模型。
 6. 如果任务影响 API、Mock、前端类型或 migration 字段，确认 `docs/plan/08-contract-alignment.md` 的对齐要求。
 7. 确认 `docs/plan/07-development-standard.md` 对当前任务的约束，尤其是阿里巴巴 Java 开发手册和关键注释要求。
-8. 实现后端、前端或部署文件。
+8. 按阶段实现文档、migration、后端、前端或部署文件；不得绕过 M1/M2/M3 边界提前落地代码。
 9. 补充必要测试或验收记录。
 10. 检查 Git diff，确保变更聚焦。
 11. 用清晰提交信息记录增量。
