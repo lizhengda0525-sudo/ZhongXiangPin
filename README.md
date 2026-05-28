@@ -86,4 +86,6 @@ zhongxiangpin/
 
 后续进入编码前，以 `docs/README.md` 判断文档阅读路径，以 `docs/plan/06-task-implementation-checklist.md` 作为项目推进主线，按 `docs/sdd/tasks.md` 检查任务就绪门禁，并按 `docs/harness/reference-map.md` 读取旧项目对应行为证据。
 
+阶段边界：M1 固定 OpenAPI、错误码、状态枚举、Mock 示例和字段映射；M2 固定 migration、唯一键、索引和 MySQL 交易事实源；M3 才开始后端 Maven 多模块和基础代码落地。
+
 P0 要完成用户端、后端、管理端、运行态治理、验证和发布所需的全部基础功能；P1 只用于承接后续含金量优化、工程增强和生产化提升。

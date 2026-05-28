@@ -9,7 +9,8 @@
 - 规划文档回答“项目要做什么、按什么顺序做、遵守哪些工程规则”。
 - SDD 回答“某个后端、前端或 Mock 工作包具体如何构建”。
 - Harness 回答“旧项目里哪些行为可以作为只读参考证据”。
-- OpenAPI 回答“前后端、Mock 和后端 DTO 共同遵守什么契约”。
+- OpenAPI 回答“前后端、Mock，以及 M3 之后落地的后端 DTO 共同遵守什么契约”。
+- migration 回答“哪些表、字段、索引、唯一键和状态持久化是交易事实源”。
 - 验证文档回答“怎样证明任务真的完成，并且没有破坏高风险边界”。
 
 ## 2. 开发阅读流
@@ -49,7 +50,7 @@ flowchart TB
 | `docs/plan/06-task-implementation-checklist.md` | 任务实施清单，作为项目推进主线，定义任务编号、目标、验收标准和建议提交。 | 领取任何具体任务前。 | 新增任务、调整范围、记录实际偏差时。 |
 | `docs/plan/07-development-standard.md` | 项目开发规范，定义 Java、注释、编码格式、质量门禁和任务总结要求。 | 后端任务和工程质量相关任务前。 | 规范、注释要求、编码格式或静态扫描策略变化时。 |
 | `docs/plan/08-contract-alignment.md` | 契约对齐规范，统一 OpenAPI、Mock、前端类型和 migration 字段映射。 | 任何影响 API、Mock、前端类型或数据库字段的任务前。 | 接口字段、枚举、状态、表结构或 Mock 策略变化时。 |
-| `docs/plan/openapi.yaml` | API 单一事实源，定义路径、请求、响应、错误码、schema 和示例。 | 前后端接口、Mock、DTO、联调前。 | 任何 API 或字段契约变化时。 |
+| `docs/plan/openapi.yaml` | API 单一事实源，定义路径、请求、响应、错误码、schema 和示例。 | M1 契约任务、前端接口、Mock、M3 后端 DTO 和联调前。 | 任何 API 或字段契约变化时。 |
 | `docs/harness/README.md` | Harness 执行指南，说明旧项目只读参照规则和证据记录格式。 | 需要查看旧项目行为证据前。 | Harness 使用规则或证据格式变化时。 |
 | `docs/harness/reference-map.md` | Harness 参考索引，列出每类任务应查看的旧项目文件和提取重点。 | 实现任务前查旧项目路径时。 | 旧项目参考范围或任务证据要求变化时。 |
 | `docs/sdd/README.md` | SDD 索引，说明各 SDD 范围、规则和 Agent 交接格式。 | 查找某类任务对应 SDD 时。 | SDD 文件结构或交接格式变化时。 |
@@ -58,7 +59,7 @@ flowchart TB
 | `docs/sdd/frontend-user/spec.md` | 用户端 SDD，定义用户端路由、API 客户端、状态、页面要求、Mock 和验证方式。 | 用户端任务开始前。 | 用户端页面、路由、状态或接口字段变化时。 |
 | `docs/sdd/frontend-admin/spec.md` | 管理端 SDD，定义后台路由、治理页面、API 客户端、权限、Mock 和验证方式。 | 管理端任务开始前。 | 管理端页面、权限、治理流程或接口字段变化时。 |
 | `docs/sdd/mock/strategy.md` | Mock 与并行开发策略，定义 OpenAPI 示例、前端内存 Mock、后端本地 Mock 和种子数据规则。 | 后端未完成但前端需要并行开发时。 | Mock 场景、数据形状或切换策略变化时。 |
-| `deploy/migration/V1__init_schema.sql` | P0 初始表结构，定义用户、商品、活动、交易、可靠事件、标签、DCC 和审计表。 | 后端持久化、Mapper、数据验证前。 | 未合并前可修订；合并后只新增下一版 migration。 |
+| `deploy/migration/V1__init_schema.sql` | P0 初始表结构和数据事实源，定义用户、商品、活动、交易、可靠事件、标签、DCC 和审计表。 | M2 数据库任务、M3 后端持久化、Mapper 和数据验证前。 | 未合并前可修订；合并后只新增下一版 migration。 |
 
 ## 4. 任务启动检查
 
@@ -85,4 +86,6 @@ flowchart TB
 
 ## 6. 当前阶段判断
 
-当前仓库处于文档基线统一阶段：规划、SDD、OpenAPI 和 V1 migration 已形成初稿，但后端 Maven 工程、前端 Vue 工程和自动化验证尚未落地。下一步应先完成文档统一和初始提交，再进入后端骨架、前端壳层和契约验证任务。
+当前仓库处于文档基线统一阶段：规划、SDD、OpenAPI 和 V1 migration 已形成初稿，但后端 Maven 工程、前端 Vue 工程和自动化验证尚未落地。下一步应先完成文档统一和初始提交，再按 M1 契约验证、M2 数据库与 migration、M3 后端骨架推进。
+
+阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。

@@ -6,9 +6,9 @@
 
 ## 单一事实源
 
-`docs/plan/openapi.yaml` 是所有 Mock 请求和响应形状的单一事实源。
+`docs/plan/openapi.yaml` 是所有 Mock 请求和响应形状的单一事实源。`deploy/migration/V1__init_schema.sql` 和后续 migration 是种子数据、状态持久化和交易事实的单一事实源。
 
-后续 Mock 数据可以放在前端源码中，但示例必须来自 OpenAPI，或至少手工校验过与 OpenAPI 一致。
+M1 可以补齐 OpenAPI examples 和前端内存 Mock 的数据形状，但不创建后端 Java 代码。M2 可以补齐 migration 和种子数据约束，但不创建 Mapper、Repository 或业务实现。后续 Mock 数据可以放在前端源码中，但示例必须来自 OpenAPI，或至少手工校验过与 OpenAPI 一致。
 
 ## Mock 层级
 
@@ -16,7 +16,7 @@
 | --- | --- | --- |
 | OpenAPI 示例 | 契约和文档任务 | 每个端点应包含成功示例和代表性失败示例。 |
 | 前端内存 Mock | 后端端点尚未实现 | 必须使用和真实 API 调用相同的 TypeScript 类型。 |
-| 后端本地 Mock 端点 | 外部依赖不存在，例如支付回调 | 只能在 local profile 启用。 |
+| 后端本地 Mock 端点 | M3 后端工程存在后，外部依赖不存在，例如支付回调 | 只能在 local profile 启用。 |
 | 种子数据 | 后端联调和演示 | 必须通过 migration 或 seed 脚本写入，不依赖手工点库。 |
 
 ## 必要 Mock 场景
@@ -89,10 +89,11 @@
 
 1. 在 `openapi.yaml` 中新增或更新 schema。
 2. 增加成功和失败示例。
-3. 如果改变行为，更新后端 SDD。
+3. 如果改变行为，更新对应 SDD；后端实现细节只在 M3 之后落地。
 4. 如果改变页面状态，更新前端 SDD。
 5. 更新 Mock fixture。
-6. 条件具备时运行 OpenAPI lint 和前端类型检查。
+6. 如果改变数据事实源，更新 migration 或下一版 migration，并同步契约对齐映射。
+7. 条件具备时运行 OpenAPI lint 和前端类型检查。
 
 ## 完成标准
 
