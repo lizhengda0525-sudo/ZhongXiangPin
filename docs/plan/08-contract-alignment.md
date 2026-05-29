@@ -16,7 +16,7 @@ M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映�
 | --- | --- | --- |
 | API 路径、请求、响应、错误码、示例 | `docs/plan/openapi.yaml` | 前端 API 类型、Mock 数据、M3 后端 Controller/DTO |
 | 表、字段、索引、唯一键、状态持久化 | `deploy/migration/V1__init_schema.sql` 和后续 migration | M3 后端持久化、Mapper、测试数据 |
-| 任务执行和漂移控制 | `docs/sdd/tasks.md` | Agent、PR、任务验收 |
+| 任务门禁和漂移控制 | `docs/sdd/tasks.md` | Agent、PR、任务验收 |
 | 前端 Mock 规则 | `docs/sdd/mock/strategy.md` | 用户端、管理端 |
 
 ## 4. 统一响应契约

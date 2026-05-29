@@ -1,6 +1,6 @@
-﻿# AGENT.md
+# AGENT.md
 
-本文是 `D:\JAVA\ZXP\zhongxiangpin` 的开发协作入口，用于管理上下文、约束开发流程和指向具体规范文档。本文保持轻量，不承载所有实现细节。
+本文是 `D:\JAVA\ZXP\zhongxiangpin` 的开发协作入口，用于管理上下文、约束开发流程和指向具体规范文档。本文保持轻量，不承载任务清单、完整规范或实现细节。
 
 ## 1. 项目边界
 
@@ -18,23 +18,28 @@ D:\ZXP\zhongxiangpin
 
 开发时必须基于已有项目理解业务行为、接口形态、数据模型和工程经验，但新项目独立开发，不复制旧项目源码，不在旧项目中继续叠加功能。
 
-## 2. 上下文读取顺序
+## 2. 上下文读取策略
 
-开始任何任务前，按需读取以下文档：
+`AGENT.md` 只负责说明协作边界和入口规则。详细文档职责、阅读流和更新规则统一维护在 `docs/README.md`；任务编号、范围和验收标准统一维护在 `docs/plan/06-task-implementation-checklist.md`。
 
-1. `AGENT.md`：确认协作规则和上下文边界。
-2. `README.md`：确认项目定位和仓库说明。
-3. `docs/README.md`：确认文档地图、各文档职责和开发阅读流。
-4. `docs/plan/06-task-implementation-checklist.md`：确认当前任务编号、范围和验收标准。
-5. `docs/sdd/tasks.md`：确认任务就绪门禁、依赖顺序和 Agent 分工。
-6. 当前任务对应 SDD：后端读 `docs/sdd/backend/spec.md`，用户端读 `docs/sdd/frontend-user/spec.md`，管理端读 `docs/sdd/frontend-admin/spec.md`，Mock 读 `docs/sdd/mock/strategy.md`。
-7. `docs/harness/reference-map.md`：确认旧项目参考文件。
-8. `docs/plan/openapi.yaml`：确认接口契约。
-9. `docs/plan/07-development-standard.md`：确认阿里巴巴 Java 开发手册、注释和质量门禁要求。
-10. `docs/plan/08-contract-alignment.md`：当任务影响 OpenAPI、Mock、前端类型或 migration 状态字段时，确认契约对齐规则。
-11. 对应专题文档：架构、业务、Git、路线图或验证计划。
+开始任务前，固定读取：
 
-不要一次性把所有细节塞进当前上下文。只读取当前任务需要的文档和旧项目代码。
+1. `AGENT.md`：确认协作规则、工作区边界和停止条件。
+2. `README.md`：确认项目定位、当前阶段和目录说明。
+3. `docs/README.md`：按文档地图决定后续只读取哪些任务相关文档。
+
+进入具体任务后，按需读取：
+
+- `docs/plan/06-task-implementation-checklist.md`：确认任务编号、范围和验收标准。
+- `docs/sdd/tasks.md`：确认就绪门禁、依赖顺序和 Agent 分工。
+- 当前任务对应 SDD：后端、用户端、管理端或 Mock。
+- `docs/harness/reference-map.md`：确认旧项目只读参考文件。
+- `docs/plan/openapi.yaml`：当任务影响接口契约时读取。
+- `docs/plan/08-contract-alignment.md`：当任务影响 API、Mock、前端类型或 migration 字段时读取。
+- `docs/plan/07-development-standard.md`：后端任务或工程质量任务必须读取。
+- 对应专题文档：架构、业务、Git、路线图或验证计划。
+
+如果用户没有给出明确任务编号，Agent 只做定位和建议，不直接选择任务实现；应先说明可能对应的任务编号、假设和验证方式，请用户确认后再推进。不要一次性把所有细节塞进当前上下文，只读取当前任务需要的文档和旧项目代码。
 
 阶段边界必须先确认：
 
@@ -67,21 +72,16 @@ D:\ZXP\zhongxiangpin
 
 ## 5. 开发流程
 
-每个任务按以下顺序推进：
+每个任务按以下摘要流程推进：
 
-1. 明确任务编号和验收标准。
-2. 写清当前假设；如果存在多个解释或范围不清，先向用户确认。
-3. 查阅 SDD 和 Harness 参考索引，确认任务达到就绪门禁。
-4. 查阅旧项目对应实现，提取业务行为、隐性约束和风险点。
-5. 更新或确认 OpenAPI、错误码、状态枚举和数据模型。
-6. 如果任务影响 API、Mock、前端类型或 migration 字段，确认 `docs/plan/08-contract-alignment.md` 的对齐要求。
-7. 确认 `docs/plan/07-development-standard.md` 对当前任务的约束，尤其是阿里巴巴 Java 开发手册和关键注释要求。
-8. 按阶段实现文档、migration、后端、前端或部署文件；不得绕过 M1/M2/M3 边界提前落地代码。
-9. 补充必要测试或验收记录。
-10. 检查 Git diff，确保变更聚焦。
-11. 用清晰提交信息记录增量。
+1. 确认任务编号、成功标准和验证方式；范围不清时先说明假设并请求确认。
+2. 按 `docs/sdd/tasks.md` 检查就绪门禁，按 `docs/harness/reference-map.md` 提取旧项目行为证据。
+3. 先确认事实源：任务清单、OpenAPI、migration、SDD、契约对齐规则和开发规范。
+4. 在当前阶段边界内实现最小可验证增量，不提前落地后续阶段代码。
+5. 补充必要测试、Mock 检查、构建或手工验收记录。
+6. 检查 Git diff，确保变更聚焦，并在总结中说明变更内容、验证结果和剩余风险。
 
-详细任务拆解见：`docs/plan/06-task-implementation-checklist.md`。
+详细任务拆解、完整推进顺序和建议提交见 `docs/plan/06-task-implementation-checklist.md`；任务门禁、漂移控制和 PR 检查见 `docs/sdd/tasks.md`。
 
 ## 6. Karpathy 风格开发约束
 
@@ -148,21 +148,22 @@ app -> trigger + infrastructure
 
 详细规范见：`docs/plan/03-git-versioning.md`、`docs/plan/05-validation.md`。
 
-## 11.停止与升级条件
-
+## 11. 停止与升级条件
 
 当出现以下情况时，Agent 应停止自动推进并请求用户澄清或决策：
+
 - 新旧项目行为存在不可兼容差异且无明确优先规则
 - 当前任务需要修改 OpenAPI 契约但未在任务描述中授权
 - 需要新增 infrastructure 依赖（如新中间件、新第三方SDK）
 - 任务涉及金额/支付/退款路径，但测试验证无法通过（需人工复核）
 
-
 ## 12. Agent 工作要求
 
 后续 Agent 参与本项目时：
 
+- 把 `AGENT.md` 当作协作入口，不把它当作任务手册；任务事实源始终是 `docs/plan/06-task-implementation-checklist.md`。
 - 先确认当前任务属于哪个文档和编号。
+- 如果用户没有明确任务编号，先给出候选任务编号、判断依据和建议下一步，等用户确认后再实现。
 - 只加载当前任务必要上下文，避免上下文拥挤。
 - 不修改 `D:\ZXP\zhongxiangpin`，除非用户明确要求。
 - 不复制旧项目源码到新项目。

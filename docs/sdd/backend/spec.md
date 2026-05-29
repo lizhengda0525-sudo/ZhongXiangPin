@@ -129,12 +129,12 @@ MySQL 是交易事实源，队伍、订单、支付、退款、可靠事件、�
 
 | 范围 | 表 | 必要约束 |
 | --- | --- | --- |
-| 认证 | `user_account`、`admin_operation_log` | username 唯一、phone 唯一、role/status 字段。 |
+| 认证 | `user_account` | username 唯一、phone 唯一、role/status 字段。 |
 | 会场 | `sku`、`activity`、`activity_sku`、`discount`、`activity_version` 或版本字段 | 活动状态/时间/version；SKU 绑定唯一性。 |
 | 标签 | `crowd_tag`、`crowd_tag_job`、`crowd_tag_detail` | `tagId + batchId + userAccountId`，current batch 指针。 |
 | 交易 | `team`、`trade_order`、`pay_record`、`refund_record` | `userId + clientOrderNo`、`orderId`、`payNo`、`refundNo`、队伍条件更新。 |
 | 运行态 | 优先 `reliable_event`，或兼容 notify/compensation 表 | `eventType + bizKey`、重试字段、下次执行时间、payload JSON。 |
-| 治理 | `dcc_config`，可选线程池/审计表 | 写操作可追踪操作者。 |
+| 治理 | `dcc_config`、`admin_operation_log`，线程池持久化表可按运行态治理需要后续新增 | 写操作可追踪操作者。 |
 
 ## 用例切片
 

@@ -883,6 +883,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EventDetailApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/EventDetailSuccess"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1008,6 +1011,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminActivityApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AdminActivitySuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -1042,6 +1048,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminActivityApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AdminActivitySuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -1147,6 +1156,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TagJobApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TagJobSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -1349,6 +1361,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ThreadPoolRuntimeApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/ThreadPoolRuntimeSuccess"
         "403":
           $ref: "#/components/responses/Forbidden"
     put:
@@ -1382,6 +1397,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ThreadPoolRuntimeApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/ThreadPoolRuntimeSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -1974,6 +1992,24 @@ components:
             rejectedCount: 0
             topic: zxp-thread-pool-config
             updatedAt: "2026-05-25T10:00:00+08:00"
+    ThreadPoolRuntimeSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-thread-runtime-001
+        data:
+          appName: zhongxiangpin
+          threadPoolName: reliableEventExecutor
+          corePoolSize: 8
+          maximumPoolSize: 16
+          activeCount: 3
+          poolSize: 8
+          queueType: LinkedBlockingQueue
+          queueSize: 1000
+          remainingCapacity: 972
+          rejectedCount: 0
+          topic: zxp-thread-pool-config
+          updatedAt: "2026-05-25T10:30:00+08:00"
     AuditLogPageSuccess:
       value:
         code: "0000"

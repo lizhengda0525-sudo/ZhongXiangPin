@@ -1,18 +1,18 @@
 # SDD 索引
 
-本目录保存新项目重构所需的可执行软件设计文档。每份 SDD 都要说明要构建什么、要查看哪些旧项目 Harness 文件、编码前必须具备哪些契约，以及如何验证结果。
+本目录保存新项目重构所需的可执行软件设计文档。每份 SDD 都要说明要构建什么、要查看哪些旧项目 Harness 文件、编码前必须具备哪些契约，以及如何验证结果。任务编号、任务范围和完整执行顺序只维护在 `docs/plan/06-task-implementation-checklist.md`，本目录不重复定义任务事实源。
 
 如果不确定某个任务应该先读哪份文档，先回到 `docs/README.md` 查看文档地图和开发阅读流。
 
 ## SDD 文档
 
-| 文档 | 范围 | 主要任务 |
+| 文档 | 范围 | 对应任务来源 |
 | --- | --- | --- |
-| `backend/spec.md` | M3 后端模块、横切契约、领域规则、运行态治理和持久化实现边界 | `ZXP-BE-*`、`ZXP-QA-001`、`ZXP-QA-002`；读取 `ZXP-CONTRACT-*` 和 `ZXP-DB-*` 作为输入 |
-| `frontend-user/spec.md` | 用户端 Web、登录、会场、结算、支付、订单和退款流程 | `ZXP-FE-USER-*`、用户端相关 OpenAPI 任务 |
-| `frontend-admin/spec.md` | 管理端 Web、活动/标签/订单/任务/DCC/线程池治理 | `ZXP-FE-ADMIN-*`、管理端 OpenAPI 任务 |
-| `mock/strategy.md` | Mock 数据、本地调试接口、契约示例和并行开发策略 | `ZXP-CONTRACT-*`、前端壳层任务、联调任务 |
-| `tasks.md` | 跨 Agent 执行顺序、依赖门禁和完成标准 | 全部任务 |
+| `backend/spec.md` | M3 后端模块、横切契约、领域规则、运行态治理和持久化实现边界 | 以任务清单中的后端、数据库、契约和 QA 任务为准。 |
+| `frontend-user/spec.md` | 用户端 Web、登录、会场、结算、支付、订单和退款流程 | 以任务清单中的用户端任务为准。 |
+| `frontend-admin/spec.md` | 管理端 Web、活动/标签/订单/任务/DCC/线程池治理 | 以任务清单中的管理端任务为准。 |
+| `mock/strategy.md` | Mock 数据、本地调试接口、契约示例和并行开发策略 | 以任务清单中的契约、前端和联调任务为准。 |
+| `tasks.md` | 跨 Agent 门禁、依赖和交接规则 | 不维护任务清单，只引用任务事实源。 |
 
 ## SDD 规则
 
@@ -20,6 +20,9 @@
 - Harness 只作为旧行为证据来源。
 - OpenAPI 是前后端共享契约。
 - migration 是表结构、唯一键、状态持久化和 MySQL 交易事实源。
+- `docs/plan/06-task-implementation-checklist.md` 是唯一任务事实源。
+- `docs/plan/04-roadmap.md` 只维护阶段、里程碑和退出标准。
+- `docs/sdd/tasks.md` 只维护任务门禁、阶段依赖和交接规则。
 - OpenAPI、Mock、前端类型和 migration 状态字段的轻量对齐规则见 `docs/plan/08-contract-alignment.md`。
 - 契约、状态、错误码和验证方式不明确的任务，不能进入实现。
 - M1/M2 不落地后端 Java 代码；M3 才开始创建后端工程骨架。
@@ -42,13 +45,4 @@ Harness 参考：docs/harness/reference-map.md#...
 
 ## P0 完成定义
 
-同时满足以下条件时，P0 才算完成：
-
-- OpenAPI 覆盖认证、会场、交易、订单和后台治理端点。
-- 后端可以本地启动，并且后端测试通过。
-- 用户端可以完成登录 -> 会场 -> 试算 -> 锁单 -> Mock 支付 -> 订单 -> 退款。
-- 管理端可以完成活动、标签、订单、任务、DCC、线程池、审计和仪表盘治理操作。
-- `docs/plan/05-validation.md` 中的高风险场景有自动化测试或手工验收证据。
-- P0 tag 具备发布说明和回滚说明。
-
-P1 只承接后续含金量优化、工程增强和生产化提升，不承接 P0 基础功能缺口。
+P0 完成定义以 `docs/plan/04-roadmap.md` 为准，完整任务顺序以 `docs/plan/06-task-implementation-checklist.md#16-p0-项目推进顺序` 为准。SDD 只负责说明对应工作包如何构建和验证，不单独维护一份 P0 清单。
