@@ -81,6 +81,14 @@ M1 可以补齐 OpenAPI examples 和前端内存 Mock 的数据形状，但不�
 - Mock `traceId` 要稳定可读，例如 `trace-mock-order-list-001`，用于和页面错误提示、日志或后台审计样例串联。
 - 不要只在 Mock 里编码业务规则。如果 Mock 需要某条规则，后端 SDD 必须描述同一条规则。
 
+### 认证 Mock 场景
+
+- 注册 Mock 必须覆盖成功、用户名重复、手机号重复、两次密码不一致，以及手机号验证码错误或过期。
+- 验证码 Mock 必须覆盖 `REGISTER` 和 `LOGIN` 用途；local 场景可以返回 `mockCode`，非 local 场景只返回 `sent/ttlSeconds`，不得泄露验证码明文。
+- 密码登录和验证码登录 Mock 必须返回 `token/tokenType/expiresInSeconds/user`，其中 `tokenType` 固定为 `Bearer`。
+- 管理端复用登录接口时传 `requiredRole=ADMIN`；普通用户登录管理端必须返回 403 和 `AUTH_ADMIN_REQUIRED`。
+- 登录失败 Mock 至少覆盖账号或密码错误、验证码错误或过期、账号禁用和未登录访问当前用户。
+
 ## 后端本地 Mock 规则
 
 - 支付模拟可以是 local-only。

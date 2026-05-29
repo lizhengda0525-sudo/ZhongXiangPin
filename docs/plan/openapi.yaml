@@ -79,7 +79,9 @@ paths:
                 value:
                   username: user001
                   password: Zxp123456
+                  confirmPassword: Zxp123456
                   phone: "13800000001"
+                  code: "123456"
       responses:
         "200":
           description: 注册成功并返回登录态
@@ -91,7 +93,20 @@ paths:
                 success:
                   $ref: "#/components/examples/AuthSessionSuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 注册参数或唯一性校验失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usernameDuplicated:
+                  $ref: "#/components/examples/AuthUsernameDuplicated"
+                phoneDuplicated:
+                  $ref: "#/components/examples/AuthPhoneDuplicated"
+                passwordMismatch:
+                  $ref: "#/components/examples/AuthPasswordMismatch"
+                codeInvalid:
+                  $ref: "#/components/examples/AuthCodeInvalid"
 
   /api/v1/auth/code:
     post:
@@ -107,7 +122,13 @@ paths:
             schema:
               $ref: "#/components/schemas/SendCodeRequest"
             examples:
-              normal:
+              register:
+                summary: 注册验证码
+                value:
+                  phone: "13800000001"
+                  purpose: REGISTER
+              login:
+                summary: 登录验证码
                 value:
                   phone: "13800000001"
                   purpose: LOGIN
@@ -127,10 +148,26 @@ paths:
                     traceId: trace-auth-code-001
                     data:
                       sent: true
-                      ttlSeconds: 300
+                      ttlSeconds: 120
                       mockCode: "123456"
+                production:
+                  summary: 非本地环境不返回验证码明文
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-auth-code-002
+                    data:
+                      sent: true
+                      ttlSeconds: 120
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 手机号或验证码用途不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                phoneInvalid:
+                  $ref: "#/components/examples/AuthPhoneInvalid"
 
   /api/v1/auth/login/password:
     post:
@@ -150,6 +187,12 @@ paths:
                 value:
                   account: user001
                   password: Zxp123456
+              admin:
+                summary: 管理端复用密码登录并要求 ADMIN 角色
+                value:
+                  account: admin001
+                  password: Admin123456
+                  requiredRole: ADMIN
       responses:
         "200":
           description: 登录成功
@@ -160,6 +203,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AuthSessionSuccess"
+                adminSuccess:
+                  $ref: "#/components/examples/AdminAuthSessionSuccess"
         "400":
           description: 登录失败
           content:
@@ -169,6 +214,17 @@ paths:
               examples:
                 badCredentials:
                   $ref: "#/components/examples/AuthBadCredentials"
+        "403":
+          description: 账号禁用或不具备请求角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                accountDisabled:
+                  $ref: "#/components/examples/AuthAccountDisabled"
+                adminRequired:
+                  $ref: "#/components/examples/AuthAdminRequired"
 
   /api/v1/auth/login/code:
     post:
@@ -206,11 +262,18 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 codeInvalid:
-                  value:
-                    code: AUTH_CODE_INVALID
-                    message: 验证码错误或已过期
-                    data: null
-                    traceId: trace-auth-err-002
+                  $ref: "#/components/examples/AuthCodeInvalid"
+        "403":
+          description: 账号禁用或不具备请求角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                accountDisabled:
+                  $ref: "#/components/examples/AuthAccountDisabled"
+                adminRequired:
+                  $ref: "#/components/examples/AuthAdminRequired"
 
   /api/v1/auth/me:
     get:
@@ -1650,12 +1713,29 @@ components:
         traceId: trace-auth-001
         data:
           token: zxp-local-token-10001
-          expiresInSeconds: 7200
+          tokenType: Bearer
+          expiresInSeconds: 1800
           user:
             userId: 10001
             username: user001
             phone: "13800000001"
             role: USER
+            status: ENABLED
+    AdminAuthSessionSuccess:
+      summary: 管理员登录态返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-auth-admin-001
+        data:
+          token: zxp-local-token-admin-10000
+          tokenType: Bearer
+          expiresInSeconds: 1800
+          user:
+            userId: 10000
+            username: admin001
+            phone: "13800000999"
+            role: ADMIN
             status: ENABLED
     AuthBadCredentials:
       summary: 密码错误
@@ -1664,6 +1744,65 @@ components:
         message: 账号或密码错误
         data: null
         traceId: trace-auth-err-001
+    AuthUsernameDuplicated:
+      summary: 用户名已存在
+      value:
+        code: AUTH_USERNAME_DUPLICATED
+        message: 用户名已存在
+        data:
+          field: username
+          reason: 用户名已被占用
+        traceId: trace-auth-register-001
+    AuthPhoneDuplicated:
+      summary: 手机号已绑定
+      value:
+        code: AUTH_PHONE_DUPLICATED
+        message: 手机号已被其他账号绑定
+        data:
+          field: phone
+          reason: 手机号已被其他账号绑定
+        traceId: trace-auth-register-002
+    AuthPasswordMismatch:
+      summary: 两次密码不一致
+      value:
+        code: AUTH_PASSWORD_MISMATCH
+        message: 两次输入的密码不一致
+        data:
+          field: confirmPassword
+          reason: 两次输入的密码不一致
+        traceId: trace-auth-register-003
+    AuthPhoneInvalid:
+      summary: 手机号不合法
+      value:
+        code: AUTH_PHONE_INVALID
+        message: 手机号格式不合法
+        data:
+          field: phone
+          reason: 手机号必须为中国大陆 11 位手机号
+        traceId: trace-auth-phone-001
+    AuthCodeInvalid:
+      summary: 验证码错误或过期
+      value:
+        code: AUTH_CODE_INVALID
+        message: 验证码错误或已过期
+        data: null
+        traceId: trace-auth-err-002
+    AuthAccountDisabled:
+      summary: 账号已禁用
+      value:
+        code: AUTH_ACCOUNT_DISABLED
+        message: 账号已禁用
+        data: null
+        traceId: trace-auth-disabled-001
+    AuthAdminRequired:
+      summary: 管理端登录角色不足
+      value:
+        code: AUTH_ADMIN_REQUIRED
+        message: 当前账号不是管理员
+        data:
+          currentStatus: USER
+          expectedStatus: ADMIN
+        traceId: trace-auth-admin-403
     MarketActivityPageSuccess:
       value:
         code: "0000"
@@ -2162,9 +2301,13 @@ components:
         - AUTH_401
         - AUTH_403
         - AUTH_USERNAME_DUPLICATED
+        - AUTH_PHONE_DUPLICATED
+        - AUTH_PASSWORD_MISMATCH
+        - AUTH_PHONE_INVALID
         - AUTH_BAD_CREDENTIALS
         - AUTH_CODE_INVALID
         - AUTH_ACCOUNT_DISABLED
+        - AUTH_ADMIN_REQUIRED
         - MARKET_NOT_FOUND
         - MARKET_ACTIVITY_UNAVAILABLE
         - MARKET_TAG_NOT_MATCHED
@@ -2257,6 +2400,7 @@ components:
     CodePurpose:
       type: string
       enum:
+        - REGISTER
         - LOGIN
         - BIND_PHONE
     EventType:
@@ -2273,19 +2417,36 @@ components:
       required:
         - username
         - password
+        - confirmPassword
+        - phone
+        - code
       properties:
         username:
           type: string
           minLength: 4
           maxLength: 20
           pattern: "^[A-Za-z0-9_]+$"
+          description: 用户名，4 到 20 位英文、数字或下划线，注册后唯一。
         password:
           type: string
           minLength: 8
           maxLength: 64
+          format: password
+          description: 登录密码。服务端只保存 bcrypt hash，不返回明文。
+        confirmPassword:
+          type: string
+          minLength: 8
+          maxLength: 64
+          format: password
+          description: 确认密码，必须与 password 一致。
         phone:
           type: string
           pattern: "^1[3-9][0-9]{9}$"
+          description: 注册手机号，必须唯一，并与验证码发送手机号一致。
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: 注册验证码，必须来自 `/api/v1/auth/code` 且 `purpose=REGISTER`，与 phone 匹配并在有效期内。
     SendCodeRequest:
       type: object
       required:
@@ -2295,6 +2456,7 @@ components:
         phone:
           type: string
           pattern: "^1[3-9][0-9]{9}$"
+          description: 接收验证码的手机号。
         purpose:
           $ref: "#/components/schemas/CodePurpose"
     PasswordLoginRequest:
@@ -2305,9 +2467,14 @@ components:
       properties:
         account:
           type: string
-          description: 用户名或手机号
+          description: 用户名或手机号。后端根据格式识别账号类型。
         password:
           type: string
+          format: password
+        requiredRole:
+          allOf:
+            - $ref: "#/components/schemas/UserRole"
+          description: 可选请求角色。管理端登录传 ADMIN，后端必须校验登录账号角色，不信任前端授权。
     CodeLoginRequest:
       type: object
       required:
@@ -2320,6 +2487,10 @@ components:
         code:
           type: string
           pattern: "^[0-9]{6}$"
+        requiredRole:
+          allOf:
+            - $ref: "#/components/schemas/UserRole"
+          description: 可选请求角色。管理端验证码登录如需复用该接口，传 ADMIN 并由后端校验。
     CurrentUser:
       type: object
       required:
@@ -2344,13 +2515,22 @@ components:
       type: object
       required:
         - token
+        - tokenType
         - expiresInSeconds
         - user
       properties:
         token:
           type: string
+          description: "登录 token。前端请求时放入 Authorization: Bearer {token}。"
+        tokenType:
+          type: string
+          enum:
+            - Bearer
+          description: Authorization 请求头使用的 token 类型。
         expiresInSeconds:
           type: integer
+          example: 1800
+          description: 登录态剩余有效秒数。M3 后端默认由 Redis session TTL 决定。
         user:
           $ref: "#/components/schemas/CurrentUser"
     SendCodeResult:
