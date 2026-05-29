@@ -31,6 +31,7 @@ M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映�
 - 时间字段统一为 ISO-8601 字符串，并在 OpenAPI 中使用 `type: string` + `format: date-time`。
 - `message` 是唯一响应消息字段。旧项目返回字段名为 `info`，新契约统一改为 `message`；这是面向前端和 M3 DTO 的主动命名收敛，新项目禁止保留 `info`、`msg` 或其他兼容别名。
 - HTTP 状态必须与错误类型一致：参数错误使用 400，未登录使用 401，权限不足使用 403，资源不存在使用 404，幂等冲突、非法状态、队伍已满等资源状态冲突使用 409，系统异常使用 500。错误 body 仍然使用 `code/message/data/traceId` 信封，不允许为了统一 body 把所有错误都返回 200。
+- 幂等重放如果返回已有成功结果，仍属于成功响应，`code` 固定为 `"0000"`，`message` 固定为 `成功`；是否重放放在业务 `data.idempotentReplay` 等明确字段中，不使用错误码伪装成功。
 - M3 后端 `ExceptionHandler` 必须同时设置正确 HTTP 状态和统一 body；M9/M10 前端解包必须同时读取 HTTP 状态与 `code/message/data/traceId`，并且只读取 `message`；Mock 示例必须同时模拟 HTTP 状态和统一 body，禁止使用 `info` 或只返回 200。
 
 ## 5. OpenAPI 验证

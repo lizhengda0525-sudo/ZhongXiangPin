@@ -445,8 +445,8 @@ paths:
                 replay:
                   summary: 重复 clientOrderNo 幂等返回
                   value:
-                    code: TRADE_IDEMPOTENT_REPLAY
-                    message: 重复请求，返回已有订单
+                    code: "0000"
+                    message: 成功
                     traceId: trace-trade-lock-002
                     data:
                       orderId: ORD-20260525-0001
@@ -457,6 +457,7 @@ paths:
                       payPriceCent: 7900
                       payDeadline: "2026-05-25T10:15:00+08:00"
                       canPay: true
+                      idempotentReplay: true
         "409":
           description: 锁单资源状态冲突
           content:
@@ -504,8 +505,8 @@ paths:
                 replay:
                   summary: 重复 payNo 幂等返回
                   value:
-                    code: TRADE_IDEMPOTENT_REPLAY
-                    message: 重复请求，返回已有支付结果
+                    code: "0000"
+                    message: 成功
                     traceId: trace-pay-002
                     data:
                       orderId: ORD-20260525-0001
@@ -514,6 +515,7 @@ paths:
                       teamStatus: COMPLETE
                       paidAt: "2026-05-25T10:02:00+08:00"
                       completed: true
+                      idempotentReplay: true
         "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "401":
@@ -671,11 +673,17 @@ paths:
                           clientOrderNo: CLIENT-20260525-0001
                           userId: 10001
                           username: user001
+                          activityId: 20001
+                          skuId: 30001
+                          goodsName: 桂花豆沙粽礼盒
                           teamId: TEAM-20260525-001
-                          skuName: 桂花豆沙粽礼盒
                           orderStatus: PAID
                           teamStatus: COMPLETE
+                          originalPriceCent: 9900
+                          discountCent: 2000
                           payPriceCent: 7900
+                          canPay: false
+                          canRefund: true
                           createdAt: "2026-05-25T10:00:00+08:00"
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -1710,7 +1718,10 @@ components:
             rule: 满团立减 20 元
           tagHit:
             tagId: TAG-VIP-001
+            batchId: BATCH-20260525-001
+            userId: 10001
             hit: true
+            hitSource: REDIS
           availableTeams:
             - teamId: TEAM-20260525-001
               activityId: 20001
@@ -1796,6 +1807,8 @@ components:
           skuId: 30001
           goodsName: 桂花豆沙粽礼盒
           imageUrl: https://example.com/sku/30001.png
+          teamId: TEAM-20260525-001
+          teamStatus: COMPLETE
           team:
             teamId: TEAM-20260525-001
             activityId: 20001
@@ -1804,6 +1817,7 @@ components:
             completeCount: 2
             lockCount: 0
             refundCount: 0
+            remainCount: 0
             expireTime: "2026-05-25T10:30:00+08:00"
           orderStatus: PAID
           originalPriceCent: 9900
@@ -2154,7 +2168,6 @@ components:
         - MARKET_NOT_FOUND
         - MARKET_ACTIVITY_UNAVAILABLE
         - MARKET_TAG_NOT_MATCHED
-        - TRADE_IDEMPOTENT_REPLAY
         - TRADE_TEAM_FULL
         - TRADE_ORDER_STATUS_INVALID
         - TRADE_PRICE_CHANGED
@@ -3186,6 +3199,10 @@ components:
           format: date-time
         canPay:
           type: boolean
+        idempotentReplay:
+          type: boolean
+          default: false
+          description: 是否为同一幂等键的重复请求重放结果。成功响应 code 仍固定为 0000。
     MockPayRequest:
       type: object
       required:
@@ -3221,6 +3238,10 @@ components:
           format: date-time
         completed:
           type: boolean
+        idempotentReplay:
+          type: boolean
+          default: false
+          description: 是否为同一 payNo 的重复请求重放结果。成功响应 code 仍固定为 0000。
     UserRefundRequest:
       type: object
       required:
@@ -3276,6 +3297,10 @@ components:
         refundedAt:
           type: string
           format: date-time
+        idempotentReplay:
+          type: boolean
+          default: false
+          description: 是否为同一 refundNo 的重复请求重放结果。成功响应 code 仍固定为 0000。
 
     OrderSummary:
       type: object
