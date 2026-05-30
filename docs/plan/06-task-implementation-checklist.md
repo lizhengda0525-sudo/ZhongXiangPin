@@ -2,7 +2,7 @@
 
 ## 1. 使用方式
 
-这份清单用于把已有项目的真实实现、当前规划文档和新项目目标对齐，后续按任务逐步手写代码。旧项目只作为业务行为、接口形态和异常场景参考，不复制源码。
+这份清单是项目唯一任务事实源，用于把已有项目的真实实现、当前规划文档和新项目目标对齐，后续按任务逐步手写代码。任务编号、任务范围、验收标准和完整推进顺序只在本文维护；`docs/plan/04-roadmap.md` 只管阶段，`docs/sdd/tasks.md` 只管门禁和依赖。旧项目只作为业务行为、接口形态和异常场景参考，不复制源码。
 
 执行任何任务前，先读取：
 
@@ -101,7 +101,7 @@
 | --- | --- |
 | 参考依据 | 旧项目 `Response`、`ResponseCode`；新文档 `openapi.yaml` 最小骨架 |
 | 目标落地 | `docs/plan/openapi.yaml`、`docs/plan/08-contract-alignment.md`、OpenAPI 示例 |
-| 实现要点 | 定义 `code`、`message`、`data`、`traceId`；分页结构统一为 `pageNo/pageSize/total/items`；错误响应也返回同一结构；时间统一 ISO-8601 字符串 |
+| 实现要点 | 定义 `code`、`message`、`data`、`traceId`；`message` 是唯一响应消息字段，禁止 `info`、`msg` 等别名；分页结构统一为 `pageNo/pageSize/total/items`；错误响应也返回同一结构，并通过 400/401/403/404/409/500 等 HTTP 状态表达协议层语义；时间统一 ISO-8601 字符串 |
 | 验收标准 | OpenAPI 能表达成功和失败响应；前后端不再各自定义返回体 |
 | 验证方式 | OpenAPI lint；手动检查所有接口引用统一 `ApiResponse` |
 | 建议提交 | `docs: define unified api response contract` |
@@ -169,7 +169,7 @@
 | --- | --- |
 | 参考依据 | 旧项目 `user_account`、`AuthServiceImpl` 的 username/phone/passwordHash/role/status |
 | 目标落地 | `deploy/migration`、`docs/plan/08-contract-alignment.md` |
-| 实现要点 | 表包括 `user_account`、可选 `admin_operation_log`；username、phone 唯一；密码只存 bcrypt hash；role 区分 USER/ADMIN；status 支持禁用；记录 create/update time |
+| 实现要点 | 表包括 `user_account`；username、phone 唯一；密码只存 bcrypt hash；role 区分 USER/ADMIN；status 支持禁用；记录 create/update time；后台审计表由 `ZXP-DB-005` 统一维护 |
 | 验收标准 | 支持密码登录、验证码登录自动创建账号、手机号绑定和管理员鉴权 |
 | 验证方式 | migration 空库执行成功；唯一键冲突可复现 |
 | 建议提交 | `feat: add user account migration` |
@@ -735,19 +735,24 @@
 
 ## 16. P0 项目推进顺序
 
-P0 按完整项目基础功能推进，建议按以下顺序执行：
+本节只维护完整执行顺序，不重复任务细节。同一阶段内的任务在满足 `docs/sdd/tasks.md` 门禁后可以并行，但不得越过阶段边界提前落地后端 Java、Mapper、Repository 或业务实现。
 
-1. `ZXP-DOC-004`，先把开发规范、阿里巴巴 Java 开发手册约束和注释要求固化为门禁。
-2. `ZXP-CONTRACT-001` 到 `ZXP-CONTRACT-006`，先把 OpenAPI、Mock 示例、错误码、状态枚举和字段映射定住，不落地后端 Java 代码。
-3. `ZXP-DB-001` 到 `ZXP-DB-005`，保证 migration 支撑交易事实、可靠事件、标签和审计，不落地 Mapper 或 Repository。
-4. `ZXP-BE-SKEL-001` 到 `ZXP-BE-SKEL-004`，从这里开始创建后端工程并让后端能启动。
-5. `ZXP-BE-AUTH-001`、`ZXP-BE-AUTH-003`，先解决身份可信。
-6. `ZXP-BE-MARKET-001`、`ZXP-BE-MARKET-002`、`ZXP-BE-MARKET-003`，跑通会场和试算。
-7. `ZXP-BE-TRADE-001` 到 `ZXP-BE-TRADE-006`，跑通交易主链路。
-8. `ZXP-BE-RUNTIME-001`、`ZXP-BE-RUNTIME-004`，先补超时关单和任务执行器。
-9. `ZXP-FE-USER-001` 到 `ZXP-FE-USER-004`，形成用户端闭环。
-10. `ZXP-BE-ADMIN-003`、`ZXP-BE-ADMIN-004`、`ZXP-FE-ADMIN-003`，先做订单和任务治理。
-11. `ZXP-QA-001` 到 `ZXP-QA-004`，补齐验收证据。
+| 顺序 | 任务 | 解锁条件或说明 |
+| --- | --- | --- |
+| 1 | `ZXP-DOC-001` -> `ZXP-DOC-002` -> `ZXP-DOC-003` -> `ZXP-DOC-004` | 先统一文档入口、任务卡、ADR 和开发规范；`ZXP-DOC-004` 必须先进入后续门禁。 |
+| 2 | `ZXP-GIT-001` -> `ZXP-GIT-002` | 建立分支、提交和 tag 规则，避免后续任务落在不可追溯历史中。 |
+| 3 | `ZXP-CONTRACT-001` -> `ZXP-CONTRACT-002` -> `ZXP-CONTRACT-003` -> `ZXP-CONTRACT-004` -> `ZXP-CONTRACT-005` -> `ZXP-CONTRACT-006` | 先固定统一响应，再补认证、会场、交易、后台治理和枚举错误码；M1 不创建后端 Java 代码。 |
+| 4 | `ZXP-DB-001` -> `ZXP-DB-002` -> `ZXP-DB-003` -> `ZXP-DB-004` -> `ZXP-DB-005` | 在契约字段和枚举稳定后固定 V1 migration；M2 不创建 Mapper、Repository 或领域代码。 |
+| 5 | `ZXP-BE-SKEL-001` -> `ZXP-BE-SKEL-002` -> `ZXP-BE-SKEL-003` -> `ZXP-BE-SKEL-004` | 从 M3 开始创建后端工程，先保证模块、统一响应、配置和仓储端口可运行。 |
+| 6 | `ZXP-BE-AUTH-001` -> `ZXP-BE-AUTH-002` -> `ZXP-BE-AUTH-003` -> `ZXP-BE-AUTH-004` | 先完成用户登录能力，再建立后端身份上下文、管理员权限和审计上下文。 |
+| 7 | `ZXP-BE-MARKET-001` -> `ZXP-BE-MARKET-003` -> `ZXP-BE-MARKET-004` -> `ZXP-BE-MARKET-002` -> `ZXP-BE-MARKET-005` | 会场列表先跑通；折扣和标签完成后再让试算具备完整规则；最后补缓存治理。 |
+| 8 | `ZXP-BE-TRADE-001` -> `ZXP-BE-TRADE-003` -> `ZXP-BE-TRADE-002` -> `ZXP-BE-TRADE-004` -> `ZXP-BE-TRADE-005` -> `ZXP-BE-TRADE-006` | 先固定状态机、价格快照和幂等语义，再落锁单、支付、退款和订单查询。 |
+| 9 | `ZXP-BE-RUNTIME-001` -> `ZXP-BE-RUNTIME-002` -> `ZXP-BE-RUNTIME-003` -> `ZXP-BE-RUNTIME-004` -> `ZXP-BE-RUNTIME-005` | 交易闭环后补超时、过期退款、巡检重建、可靠事件执行器和可观测性。 |
+| 10 | `ZXP-BE-ADMIN-001` -> `ZXP-BE-ADMIN-002` -> `ZXP-BE-ADMIN-003` -> `ZXP-BE-ADMIN-004` -> `ZXP-BE-ADMIN-005` | 后台 API 按活动、标签、订单、任务、配置治理补齐；所有写操作必须落审计。 |
+| 11 | `ZXP-FE-USER-001` -> `ZXP-FE-USER-002` -> `ZXP-FE-USER-003` -> `ZXP-FE-USER-004` | M1 后可基于 Mock 并行启动；真实联调依赖认证、会场和交易 API。 |
+| 12 | `ZXP-FE-ADMIN-001` -> `ZXP-FE-ADMIN-002` -> `ZXP-FE-ADMIN-003` -> `ZXP-FE-ADMIN-004` | M1 后可基于 Mock 并行启动；真实联调依赖后台治理 API。 |
+| 13 | `ZXP-QA-001` -> `ZXP-QA-002` -> `ZXP-QA-003` -> `ZXP-QA-004` | 后端、前端主能力具备后补齐分层测试、并发一致性、前端质量和端到端验收。 |
+| 14 | `ZXP-GIT-003` -> `ZXP-GIT-004` | 可运行的后端、前端和 OpenAPI lint 命令存在后建立 CI；验收稳定后补发布和回滚。 |
 
 ## 17. P1 含金量提升任务
 

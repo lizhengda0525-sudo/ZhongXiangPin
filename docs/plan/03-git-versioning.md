@@ -1,4 +1,4 @@
-﻿# Git 与版本管理
+# Git 与版本管理
 
 ## 分支模型
 
@@ -44,8 +44,8 @@ chore(ci): add backend build gate
 
 ```text
 V1__init_schema.sql
-V2__add_payment_record.sql
-V3__add_audit_log.sql
+V2__add_runtime_metric_table.sql
+V3__add_order_search_index.sql
 ```
 
 已经合并的 migration 不修改，只新增下一版。

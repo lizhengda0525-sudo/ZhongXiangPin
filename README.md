@@ -28,12 +28,12 @@ D:\ZXP\zhongxiangpin
 
 ```text
 zhongxiangpin/
-  AGENT.md              # 开发协作入口和上下文管理规则
+  AGENTS.md             # 开发协作入口和上下文管理规则
   README.md             # Git 仓库项目介绍
   docs/README.md        # 文档地图和开发阅读流
   docs/plan/            # 规划、架构、业务、任务、验证、版本管理文档
   docs/harness/         # 旧项目 Harness 参考索引和执行规则
-  docs/sdd/             # 后端、前端、Mock 和任务执行 SDD
+  docs/sdd/             # 后端、前端、Mock 和任务门禁规则
   backend/              # 后端工程，后续放置 Maven 多模块
   frontend/user-web/    # 用户端前端工程
   frontend/admin-web/   # 管理端前端工程
@@ -42,7 +42,7 @@ zhongxiangpin/
 
 ## 文档导航
 
-- [开发协作入口](AGENT.md)
+- [开发协作入口](AGENTS.md)
 - [文档地图](docs/README.md)
 - [项目概览](docs/plan/00-overview.md)
 - [架构设计](docs/plan/01-architecture.md)
@@ -56,7 +56,7 @@ zhongxiangpin/
 - [Harness 执行说明](docs/harness/README.md)
 - [Harness 参考索引](docs/harness/reference-map.md)
 - [SDD 索引](docs/sdd/README.md)
-- [SDD 任务执行计划](docs/sdd/tasks.md)
+- [SDD 任务门禁与依赖规则](docs/sdd/tasks.md)
 - [后端 SDD](docs/sdd/backend/spec.md)
 - [用户端 SDD](docs/sdd/frontend-user/spec.md)
 - [管理端 SDD](docs/sdd/frontend-admin/spec.md)

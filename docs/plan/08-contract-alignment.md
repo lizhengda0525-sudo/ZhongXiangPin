@@ -16,10 +16,30 @@ M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映�
 | --- | --- | --- |
 | API 路径、请求、响应、错误码、示例 | `docs/plan/openapi.yaml` | 前端 API 类型、Mock 数据、M3 后端 Controller/DTO |
 | 表、字段、索引、唯一键、状态持久化 | `deploy/migration/V1__init_schema.sql` 和后续 migration | M3 后端持久化、Mapper、测试数据 |
-| 任务执行和漂移控制 | `docs/sdd/tasks.md` | Agent、PR、任务验收 |
+| 任务门禁和漂移控制 | `docs/sdd/tasks.md` | Agent、PR、任务验收 |
 | 前端 Mock 规则 | `docs/sdd/mock/strategy.md` | 用户端、管理端 |
 
-## 4. OpenAPI 验证
+## 4. 统一响应契约
+
+`ZXP-CONTRACT-001` 固定以下响应契约，后续 OpenAPI、Mock、前端类型和 M3 后端 DTO 都必须沿用：
+
+- 所有接口响应都使用统一信封：`code/message/data/traceId`。
+- 成功响应 `code` 为 `"0000"`，`message` 为 `成功`，`data` 承载业务数据；无业务数据时 `data` 为 `null` 或明确的布尔结果。
+- 失败响应也使用同一信封，`code` 使用 `ErrorCode`，`message` 使用中文错误说明，`data` 为 `null` 或 `ErrorDetail`。`ErrorDetail` 只放字段名、资源 ID、当前状态、可重试标记等安全上下文，不暴露异常堆栈、SQL、Redis key 或内部类名。
+- 错误码按业务域分段：认证使用 `AUTH_*`，会场和试算使用 `MARKET_*`，交易、支付、退款和订单使用 `TRADE_*`，后台治理使用 `ADMIN_*`，参数与系统兜底使用 `SYSTEM_*`。
+- 旧项目 `ResponseCode` 中的 `info` 文案只作为行为参考；新项目响应消息字段统一为 `message`，不保留 `info`、`msg` 或数字错误码兼容别名。
+- `traceId` 是必填字段，必须贯穿 API 响应、日志和后台审计；Mock 示例也必须提供稳定可读的 `traceId`。
+- 分页数据只能放在 `data` 下，并固定为 `pageNo/pageSize/total/items`，不再新增 `list`、`records` 等并行字段。
+- 时间字段统一为 ISO-8601 字符串，并在 OpenAPI 中使用 `type: string` + `format: date-time`。
+- `message` 是唯一响应消息字段。旧项目返回字段名为 `info`，新契约统一改为 `message`；这是面向前端和 M3 DTO 的主动命名收敛，新项目禁止保留 `info`、`msg` 或其他兼容别名。
+- HTTP 状态必须与错误类型一致：参数错误使用 400，未登录使用 401，权限不足使用 403，资源不存在使用 404，幂等冲突、非法状态、队伍已满等资源状态冲突使用 409，系统异常使用 500。错误 body 仍然使用 `code/message/data/traceId` 信封，不允许为了统一 body 把所有错误都返回 200。
+- 幂等重放如果返回已有成功结果，仍属于成功响应，`code` 固定为 `"0000"`，`message` 固定为 `成功`；是否重放放在业务 `data.idempotentReplay` 等明确字段中，不使用错误码伪装成功。
+- 交易链路幂等键固定为：锁单 `clientOrderNo`、Mock 支付 `payNo`、退款 `refundNo`。重复请求返回已有成功结果时，HTTP 状态为 200，`code` 固定为 `"0000"`，`message` 固定为 `成功`，并通过 `data.idempotentReplay=true` 标记重放；不得新增 `IDEMPOTENT_SUCCESS` 等伪错误码。
+- 用户端订单列表和订单详情归属以后端登录态为准，用户端请求不得传入可信 `userId`。订单详情访问他人订单时必须返回 HTTP 403 + `AUTH_403`，订单不存在时返回 HTTP 404 + `TRADE_ORDER_NOT_FOUND`。
+- `/api/v1/debug/**` 只允许 local profile 注册和访问。非 local profile 访问必须返回 HTTP 403 + `AUTH_403`；Debug 端点不得绕过状态机、归属校验、幂等检查或统一响应信封。
+- M3 后端 `ExceptionHandler` 必须同时设置正确 HTTP 状态和统一 body；M9/M10 前端解包必须同时读取 HTTP 状态与 `code/message/data/traceId`，并且只读取 `message`；Mock 示例必须同时模拟 HTTP 状态和统一 body，禁止使用 `info` 或只返回 200。
+
+## 5. OpenAPI 验证
 
 推荐使用 Redocly CLI 做 lint。当前仓库尚未固定 Node 工具链时，可以用 `npx` 临时执行；建立前端工程后，应把命令固化到 `package.json` 或 CI。
 
@@ -31,13 +51,14 @@ npx --yes @redocly/cli lint docs/plan/openapi.yaml
 
 - `paths` 中 P0 端点全部可被解析。
 - 所有成功和失败响应使用 `ApiResponse<T>` 或同构信封。
+- 失败响应的 HTTP 状态与错误类型一致，且 body 仍包含 `code/message/data/traceId`。
 - 分页响应使用 `PageResponse<T>` 形状。
 - P0 端点至少有一个成功示例；高风险端点必须有代表性失败示例。
 - 新增枚举值不得改变旧值语义。
 
 如果本地无法联网安装 CLI，需要在任务总结中说明原因，并至少手工检查 YAML 结构、端点响应引用、示例字段和枚举值。
 
-## 5. Mock 示例检查
+## 6. Mock 示例检查
 
 Mock 数据必须从 OpenAPI 的 schema 和 examples 派生，或手工逐项校验一致。
 
@@ -45,6 +66,7 @@ Mock 数据必须从 OpenAPI 的 schema 和 examples 派生，或手工逐项校
 
 - Mock 返回形状与真实 API 客户端一致，不绕过 `ApiResponse<T>` 解包规则。
 - Mock 字段名、枚举值、时间格式、金额单位与 OpenAPI 一致。
+- Mock 不得返回 `info`、`msg` 等响应消息别名；失败响应必须同时模拟 HTTP 状态和统一 body。
 - Mock ID 稳定可读，例如 `ORD-MOCK-001`、`TEAM-MOCK-001`。
 - 高风险场景至少覆盖 401、403、参数错误、重复幂等键、非法状态和资源不存在。
 - Mock 切换到真实 HTTP 只改数据源或环境变量，不改页面业务逻辑。
@@ -58,7 +80,7 @@ npm run build
 
 如果使用 Mock fixture 文件，可增加轻量脚本校验字段名和枚举值；不要为了校验引入复杂 Mock 服务框架。
 
-## 6. 前端类型规则
+## 7. 前端类型规则
 
 优先路线：
 
@@ -70,12 +92,16 @@ npm run build
 
 手写类型最低要求：
 
-- `ApiResponse<T>`、分页结构、状态枚举集中定义。
+- `ApiResponse<T>` 必须包含 `code/message/data/traceId`，分页结构和状态枚举集中定义。
+- 前端统一从 `message` 展示错误信息，禁止读取或透传 `info`、`msg` 等旧别名；错误处理必须保留 HTTP 状态分支。
 - 订单、队伍、任务、活动、标签、退款来源等状态只能从集中枚举导出。
 - 不新增隐式 `any`。
+- 管理端不得为后台响应使用隐式 `any`；列表统一从 `data.pageNo/pageSize/total/items` 读取。
+- 后台写操作统一提交 `reason` 和 `operatorConfirm`；后端从管理员登录态生成 `operatorId/operatorName`，前端不得伪造操作者。
+- 后台 Mock 必须覆盖成功、非管理员 403、参数错误 400、状态冲突 409 和系统异常 500 中与页面相关的场景。
 - 前端不把 `userId` 作为交易归属依据，归属以后端登录态为准。
 
-## 7. 枚举和状态映射
+## 8. 枚举和状态映射
 
 | OpenAPI schema | 允许值 | 数据库字段 | 说明 |
 | --- | --- | --- | --- |
@@ -86,10 +112,11 @@ npm run build
 | `TeamStatus` | `PROGRESS`、`COMPLETE`、`EXPIRED_UNFORMED`、`COMPLETE_AFTER_REFUND` | `team.status` | 队伍人数和退款状态推进必须和订单事务一致。 |
 | `TaskStatus` | `INIT`、`PROCESSING`、`SUCCESS`、`FAILED`、`RETRY_WAIT` | `reliable_event.status`、`crowd_tag_job.status` | 可靠事件和标签任务共用任务状态语义。 |
 | `RefundSource` | `USER`、`ADMIN`、`AUTO_EXPIRED` | `refund_record.refund_source` | 管理员退款必须写原因和操作者，自动退款由任务产生。 |
+| `CodePurpose` | `REGISTER`、`LOGIN`、`BIND_PHONE` | Redis 验证码用途 key 或后续验证码记录 | 注册、登录和绑定手机号验证码不能混用。 |
 | `EventType` | `TEAM_COMPLETE_NOTIFY`、`REDIS_SLOT_RELEASE`、`TEAM_REBUILD`、`ORDER_TIMEOUT_REPAIR`、`REFUND_REPAIR` | `reliable_event.event_type` | 事件幂等键为 `event_type + biz_key`。 |
 | `TagJobType` | `USERS`、`PARTICIPATE_COUNT` | `crowd_tag_job.rule_type` | 标签规则表达式保存在 `rule_expr` JSON 中。 |
-| 绑定状态 | `ENABLED`、`DISABLED` | `sku.status`、`activity_sku.status`、`discount.status` | 与用户账号状态同值但语义不同，代码中应使用不同枚举或明确命名。 |
-| 支付/退款记录状态 | `SUCCESS`、`FAILED` | `pay_record.status`、`refund_record.status`、`admin_operation_log.result` | 记录结果状态，不等同于订单状态。 |
+| `BindingStatus` | `ENABLED`、`DISABLED` | `sku.status`、`activity_sku.status`、`discount.status` | 与用户账号状态同值但语义不同，代码中应使用不同枚举或明确命名。 |
+| `RecordResultStatus` | `SUCCESS`、`FAILED` | `pay_record.status`、`refund_record.status`、`admin_operation_log.result` | 记录结果状态，不等同于订单状态。 |
 
 实现规则：
 
@@ -97,7 +124,7 @@ npm run build
 - 数据库只保存稳定枚举值，不保存前端展示文案。
 - 如果新增状态，必须同时更新 OpenAPI、migration 或下一版 migration、前端枚举、Mock 数据和状态机测试。
 
-## 8. 关键字段映射
+## 9. 关键字段映射
 
 | OpenAPI 字段 | 数据库字段 | 约束 |
 | --- | --- | --- |
@@ -115,13 +142,17 @@ npm run build
 | `activitySnapshot` | `trade_order.activity_snapshot` | JSON 快照，用于历史订单解释。 |
 | `discountSnapshot` | `trade_order.discount_snapshot` | JSON 快照，用于历史订单解释。 |
 | `trialNo`、`trialTime` | `trade_order.trial_no`、`trade_order.trial_time` | 锁单时保存试算证据。 |
+| `beforeStatus`、`afterStatus` | `trade_order.order_status` | 仅用于 local Debug 或运行态治理结果展示，不作为新的订单状态来源。 |
+| `closedAt` | `trade_order.closed_at` | 超时关闭时间；M1 只固定契约字段，M2/M7 再确认持久化和任务推进细节。 |
 | `eventId` | `reliable_event.event_id` | 事件业务 ID，单独唯一。 |
 | `eventType`、`bizKey` | `reliable_event.event_type`、`reliable_event.biz_key` | 组成可靠事件幂等唯一键。 |
 | `payload` | `reliable_event.payload` | 必须是结构化 JSON，不拼接字符串。 |
 | `operatorId`、`operatorName` | `admin_operation_log.operator_id`、`admin_operation_log.operator_name` | 后台写操作必须记录。 |
 | `traceId` | `admin_operation_log.trace_id`，API 响应信封字段 | 用于联动接口响应、日志和审计。 |
+| `configKey`、`configValue` | `dcc_config.config_key`、`dcc_config.config_value` | 更新必须校验 key 白名单和值范围。 |
+| `threadPoolName`、`corePoolSize`、`maximumPoolSize` | 运行态线程池配置或后续治理表 | M1 只固定契约字段，M7/M8 再落地动态治理实现。 |
 
-## 9. 变更检查清单
+## 10. 变更检查清单
 
 影响 API、数据库或前端类型的任务提交前必须检查：
 

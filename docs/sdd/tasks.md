@@ -1,10 +1,10 @@
-# SDD 任务执行计划
+# SDD 任务门禁与依赖规则
 
-本文把路线图转成可执行的 Agent 工作包。它不替代 `docs/plan/06-task-implementation-checklist.md`，只补充依赖门禁、分工和交接规则。
+本文只定义任务开工门禁、跨阶段依赖、Agent 分工和交接规则。`docs/plan/06-task-implementation-checklist.md` 是唯一任务事实源，负责维护任务编号、任务范围、验收标准和完整执行顺序；`docs/plan/04-roadmap.md` 只负责阶段视角、里程碑和退出标准。
 
 P0 覆盖 `docs/plan/06-task-implementation-checklist.md` 中定义的完整项目基础功能，包括用户端、后端、管理端、运行态治理、验证和发布证据。P1 只承接后续含金量优化、工程增强和生产化提升，不承接 P0 基础功能缺口。
 
-阶段视角见 `docs/plan/04-roadmap.md`；文档阅读流和各文档职责见 `docs/README.md`。
+阶段视角见 `docs/plan/04-roadmap.md`；完整任务顺序见 `docs/plan/06-task-implementation-checklist.md#16-p0-项目推进顺序`；文档阅读流和各文档职责见 `docs/README.md`。
 
 阶段边界必须保持一致：M1 只做契约和 Mock 示例，M2 只做 migration 和数据事实源，M3 才创建后端 Maven 工程和基础代码。任何任务如果需要提前创建 Java 后端模块、Mapper、Repository、Controller 或 Service，都必须重新评估是否已经越过当前阶段边界。
 
@@ -35,71 +35,71 @@ P0 覆盖 `docs/plan/06-task-implementation-checklist.md` 中定义的完整项�
 | 管理端 Agent | `frontend/admin-web`、管理端 Mock 数据、后台流程验证 | 后台 schema、审计字段。 |
 | QA Agent | 验证矩阵、端到端验收清单或脚本、CI 门禁 | 高风险用例和发布证据。 |
 
-## P0 依赖顺序
+## P0 依赖门禁
 
-### 阶段 1：契约与 Harness 基线
+本节只说明“哪些条件解锁下一类工作”，不重复定义具体任务。任务编号、任务说明和建议提交统一维护在 `docs/plan/06-task-implementation-checklist.md`。
 
-0. `ZXP-DOC-004`：建立项目开发规范、阿里巴巴 Java 开发手册约束和注释要求。
-1. `ZXP-CONTRACT-001`：统一响应、分页、错误响应 schema。
-2. `ZXP-CONTRACT-002`：认证 API。
-3. `ZXP-CONTRACT-003`：会场/试算 API。
-4. `ZXP-CONTRACT-004`：交易、订单、支付、退款 API。
-5. `ZXP-CONTRACT-005`：后台治理 API，覆盖活动、标签、订单、任务、DCC、线程池和审计查询。
-6. `ZXP-CONTRACT-006`：状态枚举和错误码分段。
+### M0 文档治理
 
 退出标准：
 
-- OpenAPI lint 可以运行。
-- 用户端流程和后台治理流程具备 Mock 示例。
-- 前端可以基于 OpenAPI 手写或生成类型。
-- 不创建 `backend/zhongxiangpin-*` Java 模块，不提交 DTO、Controller 或 Service 实现。
+- README、文档地图、路线图、任务清单、SDD、Harness 和开发规范职责清楚。
+- `docs/plan/06-task-implementation-checklist.md` 已能作为唯一任务事实源使用。
+- 后续文档只保留摘要和链接，不重新维护任务清单。
 
-### 阶段 2：数据库与 migration
+### M1 契约与模型
 
-1. `ZXP-DB-001` 到 `ZXP-DB-005`，V1 migration 支撑用户、商品、活动、交易、可靠事件、标签和审计等基础表结构。
-
-退出标准：
-
-- migration 可以在空库执行，或至少具备契约测试。
-- 数据字段、唯一键和状态枚举与 OpenAPI 关键 schema 对齐。
-- MySQL 作为交易事实源的字段、唯一键和条件更新边界已经体现在 migration 中。
-- 不提交 Mapper、Repository、领域模型或业务 handler。
-
-### 阶段 3：后端骨架
-
-1. `ZXP-BE-SKEL-001` 到 `ZXP-BE-SKEL-004`。
+依赖：M0 文档治理完成。
 
 退出标准：
 
-- 后端可以本地启动。
-- 空骨架下 `mvn test` 通过。
-- 健康检查、统一响应、异常处理和模块依赖方向清晰。
+- OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点。
+- 成功和代表性失败示例足以支撑前端 Mock。
+- 状态枚举、错误码和字段映射可以被前端、Mock、后端 DTO 和 migration 复用。
+- 不创建后端 Java DTO、Controller、Service、Mapper 或 Repository。
 
-### 阶段 4：后端 P0 领域
+### M2 数据库与 migration
 
-1. `ZXP-BE-AUTH-001`、`ZXP-BE-AUTH-003`、`ZXP-BE-AUTH-004`。
-2. `ZXP-BE-MARKET-001` 到 `ZXP-BE-MARKET-003`。
-3. `ZXP-BE-TRADE-001` 到 `ZXP-BE-TRADE-006`。
-4. `ZXP-BE-RUNTIME-001`、`ZXP-BE-RUNTIME-004`。
-5. `ZXP-BE-ADMIN-001` 到 `ZXP-BE-ADMIN-005`。
+依赖：M1 的关键 schema、枚举和状态字段稳定。
+
+退出标准：
+
+- V1 migration 能表达 P0 交易事实、可靠事件、标签、DCC 和审计表结构。
+- 唯一键、索引和状态字段与 OpenAPI 关键 schema 对齐。
+- MySQL 作为交易事实源的兜底边界已经落在 migration 中。
+- 不创建 Mapper、Repository、领域模型或业务 handler。
+
+### M3 后端骨架
+
+依赖：M1/M2 提供可落地的契约和数据事实源。
+
+退出标准：
+
+- 后端 Maven 多模块、统一响应、异常处理、profile、MyBatis、Redis 和健康检查可启动。
+- 模块依赖方向清晰，domain 不依赖 Web、MyBatis、Redis 或 Controller DTO。
+- 空骨架下测试命令可运行。
+
+### M4 到 M8 后端领域能力
+
+依赖：M3 后端骨架完成；对应 API 和 migration 门禁满足。
+
+依赖关系：
+
+- 认证和登录态先落地，后续交易、订单和后台接口都以后端身份上下文为准。
+- 会场、折扣、标签和缓存先支撑试算，交易锁单必须复用后端试算。
+- 交易闭环先保证状态机、幂等、价格快照、支付、退款和订单归属。
+- 运行态治理在交易闭环后补齐超时关单、队伍过期、巡检重建、可靠事件和可观测性。
+- 后台 API 按已具备的业务能力开放治理入口，写操作必须具备审计。
 
 退出标准：
 
 - 用户端 API 可以本地调用。
 - 管理端可以完成活动、标签、订单、任务、DCC、线程池和审计治理。
-- 高风险 API 具备幂等和归属校验测试。
+- 高风险 API 具备幂等、归属、状态流转和补偿验证。
 
-### 阶段 5：前端并行开发
+### M9 到 M10 前端并行开发
 
-阶段 1 完成后即可基于 Mock 数据启动：
-
-1. `ZXP-FE-USER-001` 到 `ZXP-FE-USER-004`。
-2. `ZXP-FE-ADMIN-001` 到 `ZXP-FE-ADMIN-004`。
-
-后端 API 可用后继续：
-
-- 把 Mock 调用替换或切换为真实 HTTP。
-- 验证完整用户端和管理端流程。
+依赖：M1 契约和 Mock 示例完成后可以启动壳层和 Mock 页面；真实联调依赖对应后端能力完成。
 
 退出标准：
 
@@ -107,10 +107,9 @@ P0 覆盖 `docs/plan/06-task-implementation-checklist.md` 中定义的完整项�
 - 用户端流程可以连接本地后端运行。
 - 管理端治理流程可以连接本地后端运行。
 
-### 阶段 6：QA 与发布证据
+### M11 到 M12 QA、CI 与发布证据
 
-1. `ZXP-QA-001` 到 `ZXP-QA-004`。
-2. `ZXP-GIT-003`、`ZXP-GIT-004`。
+依赖：后端、用户端和管理端 P0 能力完成；验证命令具备可运行入口。
 
 退出标准：
 

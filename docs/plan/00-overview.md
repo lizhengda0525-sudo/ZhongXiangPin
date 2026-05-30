@@ -40,7 +40,7 @@ D:\ZXP\zhongxiangpin
 - Harness 执行说明：`docs/harness/README.md`
 - Harness 参考索引：`docs/harness/reference-map.md`
 - SDD 索引：`docs/sdd/README.md`
-- SDD 任务执行计划：`docs/sdd/tasks.md`
+- SDD 任务门禁与依赖规则：`docs/sdd/tasks.md`
 - 开发路线图：`docs/plan/04-roadmap.md`
 
 ## P0 主链路

@@ -57,7 +57,11 @@ backend/
 }
 ```
 
-错误响应也使用相同信封。分页结构统一为：
+`message` 是唯一响应消息字段，M3 后端 DTO、序列化配置和前端契约不得保留旧项目 `info` 或 `msg` 兼容别名。
+
+错误响应也使用相同信封，但 HTTP 状态必须表达协议层语义：参数错误 400、未登录 401、权限不足 403、资源不存在 404、资源状态冲突 409、系统异常 500。M3 的 `ExceptionHandler` 必须同时设置正确 HTTP 状态和 `code/message/data/traceId` body，不能为了统一 body 把失败响应全部返回 200。
+
+分页结构统一为：
 
 ```json
 {
@@ -125,12 +129,12 @@ MySQL 是交易事实源，队伍、订单、支付、退款、可靠事件、�
 
 | 范围 | 表 | 必要约束 |
 | --- | --- | --- |
-| 认证 | `user_account`、`admin_operation_log` | username 唯一、phone 唯一、role/status 字段。 |
+| 认证 | `user_account` | username 唯一、phone 唯一、role/status 字段。 |
 | 会场 | `sku`、`activity`、`activity_sku`、`discount`、`activity_version` 或版本字段 | 活动状态/时间/version；SKU 绑定唯一性。 |
 | 标签 | `crowd_tag`、`crowd_tag_job`、`crowd_tag_detail` | `tagId + batchId + userAccountId`，current batch 指针。 |
 | 交易 | `team`、`trade_order`、`pay_record`、`refund_record` | `userId + clientOrderNo`、`orderId`、`payNo`、`refundNo`、队伍条件更新。 |
 | 运行态 | 优先 `reliable_event`，或兼容 notify/compensation 表 | `eventType + bizKey`、重试字段、下次执行时间、payload JSON。 |
-| 治理 | `dcc_config`，可选线程池/审计表 | 写操作可追踪操作者。 |
+| 治理 | `dcc_config`、`admin_operation_log`，线程池持久化表可按运行态治理需要后续新增 | 写操作可追踪操作者。 |
 
 ## 用例切片
 
@@ -149,6 +153,7 @@ Harness 文件：
 验收：
 
 - 注册、密码登录、验证码登录、登出、当前用户 API 可用。
+- 注册必须提交手机号和验证码，验证码用途为 `REGISTER`，且必须与手机号匹配并在有效期内。
 - 禁用账号和密码错误返回稳定错误码。
 - 订单和退款 API 拒绝未登录用户。
 - 后台 API 拒绝非管理员用户。

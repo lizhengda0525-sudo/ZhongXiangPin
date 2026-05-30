@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: 众享拼 API
   version: 0.2.0
-  description: 众享拼 P0 接口契约。本文档是前后端、Mock、M3 后落地的后端 DTO 和验收用例的共同依据。
+  description: 众享拼 P0 接口契约。本文档是前后端、Mock、M3 后落地的后端 DTO 和验收用例的共同依据。响应消息字段统一为 message，不保留旧项目 info 兼容别名；错误响应通过 HTTP 状态表达协议层语义，同时 body 仍使用 code/message/data/traceId 信封。
 servers:
   - url: http://localhost:8091
     description: 本地开发服务
@@ -57,6 +57,8 @@ paths:
                       db: UP
                       redis: UP
                       profile: local
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /api/v1/auth/register:
     post:
@@ -77,7 +79,9 @@ paths:
                 value:
                   username: user001
                   password: Zxp123456
+                  confirmPassword: Zxp123456
                   phone: "13800000001"
+                  code: "123456"
       responses:
         "200":
           description: 注册成功并返回登录态
@@ -89,7 +93,20 @@ paths:
                 success:
                   $ref: "#/components/examples/AuthSessionSuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 注册参数或唯一性校验失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usernameDuplicated:
+                  $ref: "#/components/examples/AuthUsernameDuplicated"
+                phoneDuplicated:
+                  $ref: "#/components/examples/AuthPhoneDuplicated"
+                passwordMismatch:
+                  $ref: "#/components/examples/AuthPasswordMismatch"
+                codeInvalid:
+                  $ref: "#/components/examples/AuthCodeInvalid"
 
   /api/v1/auth/code:
     post:
@@ -105,7 +122,13 @@ paths:
             schema:
               $ref: "#/components/schemas/SendCodeRequest"
             examples:
-              normal:
+              register:
+                summary: 注册验证码
+                value:
+                  phone: "13800000001"
+                  purpose: REGISTER
+              login:
+                summary: 登录验证码
                 value:
                   phone: "13800000001"
                   purpose: LOGIN
@@ -125,10 +148,26 @@ paths:
                     traceId: trace-auth-code-001
                     data:
                       sent: true
-                      ttlSeconds: 300
+                      ttlSeconds: 120
                       mockCode: "123456"
+                production:
+                  summary: 非本地环境不返回验证码明文
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-auth-code-002
+                    data:
+                      sent: true
+                      ttlSeconds: 120
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 手机号或验证码用途不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                phoneInvalid:
+                  $ref: "#/components/examples/AuthPhoneInvalid"
 
   /api/v1/auth/login/password:
     post:
@@ -148,6 +187,12 @@ paths:
                 value:
                   account: user001
                   password: Zxp123456
+              admin:
+                summary: 管理端复用密码登录并要求 ADMIN 角色
+                value:
+                  account: admin001
+                  password: Admin123456
+                  requiredRole: ADMIN
       responses:
         "200":
           description: 登录成功
@@ -158,6 +203,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AuthSessionSuccess"
+                adminSuccess:
+                  $ref: "#/components/examples/AdminAuthSessionSuccess"
         "400":
           description: 登录失败
           content:
@@ -167,6 +214,17 @@ paths:
               examples:
                 badCredentials:
                   $ref: "#/components/examples/AuthBadCredentials"
+        "403":
+          description: 账号禁用或不具备请求角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                accountDisabled:
+                  $ref: "#/components/examples/AuthAccountDisabled"
+                adminRequired:
+                  $ref: "#/components/examples/AuthAdminRequired"
 
   /api/v1/auth/login/code:
     post:
@@ -204,11 +262,18 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 codeInvalid:
-                  value:
-                    code: AUTH_CODE_INVALID
-                    message: 验证码错误或已过期
-                    data: null
-                    traceId: trace-auth-err-002
+                  $ref: "#/components/examples/AuthCodeInvalid"
+        "403":
+          description: 账号禁用或不具备请求角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                accountDisabled:
+                  $ref: "#/components/examples/AuthAccountDisabled"
+                adminRequired:
+                  $ref: "#/components/examples/AuthAdminRequired"
 
   /api/v1/auth/me:
     get:
@@ -311,48 +376,18 @@ paths:
                 $ref: "#/components/schemas/MarketActivityDetailApiResponse"
               examples:
                 success:
-                  value:
-                    code: "0000"
-                    message: 成功
-                    traceId: trace-market-detail-001
-                    data:
-                      activity:
-                        activityId: 20001
-                        skuId: 30001
-                        title: 端午粽子双人拼团
-                        source: APP
-                        channel: H5
-                        status: ACTIVE
-                        targetCount: 2
-                        validMinutes: 30
-                        startTime: "2026-05-25T09:00:00+08:00"
-                        endTime: "2026-06-01T23:59:59+08:00"
-                        version: 3
-                      goods:
-                        skuId: 30001
-                        name: 桂花豆沙粽礼盒
-                        imageUrl: https://example.com/sku/30001.png
-                        category: food
-                        originalPriceCent: 9900
-                      price:
-                        originalPriceCent: 9900
-                        discountCent: 2000
-                        payPriceCent: 7900
-                      statistics:
-                        completeTeamCount: 18
-                        processingTeamCount: 6
-                        paidOrderCount: 42
-                      topTeams:
-                        - teamId: TEAM-20260525-001
-                          activityId: 20001
-                          status: PROGRESS
-                          targetCount: 2
-                          completeCount: 1
-                          lockCount: 0
-                          remainCount: 1
-                          expireTime: "2026-05-25T10:30:00+08:00"
+                  $ref: "#/components/examples/MarketActivityDetailSuccess"
         "404":
           $ref: "#/components/responses/MarketNotFound"
+        "409":
+          description: 活动不可用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                activityUnavailable:
+                  $ref: "#/components/examples/MarketActivityUnavailable"
 
   /api/v1/market/trials:
     post:
@@ -384,21 +419,28 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/TrialSuccess"
-        "400":
-          description: 活动不可用或标签未命中
+                noAvailableTeams:
+                  $ref: "#/components/examples/TrialNoAvailableTeams"
+        "403":
+          description: 当前用户不满足活动人群要求
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 tagNotMatched:
-                  value:
-                    code: MARKET_TAG_NOT_MATCHED
-                    message: 当前用户不满足活动人群要求
-                    data:
-                      activityId: 20001
-                      tagId: TAG-VIP-001
-                    traceId: trace-market-err-001
+                  $ref: "#/components/examples/MarketTagNotMatched"
+        "404":
+          $ref: "#/components/responses/MarketNotFound"
+        "409":
+          description: 活动不可用或状态冲突
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                activityUnavailable:
+                  $ref: "#/components/examples/MarketActivityUnavailable"
 
   /api/v1/trade/orders/lock:
     post:
@@ -441,34 +483,18 @@ paths:
                 success:
                   $ref: "#/components/examples/LockOrderSuccess"
                 replay:
-                  summary: 重复 clientOrderNo 幂等返回
-                  value:
-                    code: TRADE_IDEMPOTENT_REPLAY
-                    message: 重复请求，返回已有订单
-                    traceId: trace-trade-lock-002
-                    data:
-                      orderId: ORD-20260525-0001
-                      clientOrderNo: CLIENT-20260525-0001
-                      teamId: TEAM-20260525-001
-                      orderStatus: WAIT_PAY
-                      teamStatus: PROGRESS
-                      payPriceCent: 7900
-                      payDeadline: "2026-05-25T10:15:00+08:00"
-                      canPay: true
-        "400":
-          description: 锁单失败
+                  $ref: "#/components/examples/LockOrderReplay"
+        "409":
+          description: 锁单资源状态冲突
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 teamFull:
-                  value:
-                    code: TRADE_TEAM_FULL
-                    message: 当前队伍已满
-                    data:
-                      teamId: TEAM-20260525-001
-                    traceId: trace-trade-err-001
+                  $ref: "#/components/examples/TradeTeamFull"
+                priceChanged:
+                  $ref: "#/components/examples/TradePriceChanged"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -500,19 +526,8 @@ paths:
                 success:
                   $ref: "#/components/examples/PaymentSuccess"
                 replay:
-                  summary: 重复 payNo 幂等返回
-                  value:
-                    code: TRADE_IDEMPOTENT_REPLAY
-                    message: 重复请求，返回已有支付结果
-                    traceId: trace-pay-002
-                    data:
-                      orderId: ORD-20260525-0001
-                      payNo: PAY-20260525-0001
-                      orderStatus: PAID
-                      teamStatus: COMPLETE
-                      paidAt: "2026-05-25T10:02:00+08:00"
-                      completed: true
-        "400":
+                  $ref: "#/components/examples/PaymentReplay"
+        "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -545,7 +560,9 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/RefundSuccess"
-        "400":
+                replay:
+                  $ref: "#/components/examples/RefundReplay"
+        "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -604,6 +621,49 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/OrderNotFound"
+
+  /api/v1/debug/trade/orders/{orderId}/timeout-close:
+    post:
+      tags:
+        - 交易
+      summary: 本地调试关闭超时未支付订单
+      description: 仅 local profile 注册，用于本地演示 WAIT_PAY 订单超时关闭。非 local profile 必须返回 403，不能绕过真实状态机、归属和幂等校验。
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeDebugTimeoutCloseRequest"
+            examples:
+              normal:
+                value:
+                  now: "2026-05-25T10:16:00+08:00"
+                  reason: 本地演示未支付订单超时关闭
+      responses:
+        "200":
+          description: 本地关闭成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeDebugTimeoutCloseApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TradeDebugTimeoutCloseSuccess"
+        "403":
+          description: 非 local profile 禁止访问
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                nonLocal:
+                  $ref: "#/components/examples/TradeDebugNonLocalForbidden"
+        "404":
+          $ref: "#/components/responses/OrderNotFound"
+        "409":
+          $ref: "#/components/responses/TradeInvalidStatus"
 
   /api/v1/admin/orders:
     get:
@@ -669,11 +729,17 @@ paths:
                           clientOrderNo: CLIENT-20260525-0001
                           userId: 10001
                           username: user001
+                          activityId: 20001
+                          skuId: 30001
+                          goodsName: 桂花豆沙粽礼盒
                           teamId: TEAM-20260525-001
-                          skuName: 桂花豆沙粽礼盒
                           orderStatus: PAID
                           teamStatus: COMPLETE
+                          originalPriceCent: 9900
+                          discountCent: 2000
                           payPriceCent: 7900
+                          canPay: false
+                          canRefund: true
                           createdAt: "2026-05-25T10:00:00+08:00"
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -698,6 +764,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/OrderDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -743,7 +811,22 @@ paths:
                       orderStatus: REFUNDED
                       teamStatus: COMPLETE_AFTER_REFUND
                       refundedAt: "2026-05-25T11:00:00+08:00"
-        "400":
+                replay:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-admin-refund-replay-001
+                    data:
+                      orderId: ORD-20260525-0001
+                      refundNo: RF-ADMIN-20260525-0001
+                      refundSource: ADMIN
+                      orderStatus: REFUNDED
+                      teamStatus: COMPLETE_AFTER_REFUND
+                      refundedAt: "2026-05-25T11:00:00+08:00"
+                      idempotentReplay: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "403":
           $ref: "#/components/responses/Forbidden"
@@ -773,6 +856,8 @@ paths:
                       retryWaitCount: 2
                       failedCount: 1
                       successTodayCount: 18
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -805,6 +890,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/EventPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -825,6 +912,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/EventDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -857,6 +946,17 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/EventDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 任务当前状态不允许执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidOperation:
+                  $ref: "#/components/examples/AdminInvalidOperation"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -881,6 +981,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EventDetailApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/EventDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 任务当前状态不允许执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidOperation:
+                  $ref: "#/components/examples/AdminInvalidOperation"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -920,6 +1034,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AdminActivityPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
@@ -963,7 +1079,16 @@ paths:
                 success:
                   $ref: "#/components/examples/AdminActivitySuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 活动配置参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidTime:
+                  $ref: "#/components/examples/AdminActivityInvalidTime"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -984,6 +1109,10 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AdminActivitySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/MarketNotFound"
     put:
@@ -1006,8 +1135,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminActivityApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AdminActivitySuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 活动配置参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidTime:
+                  $ref: "#/components/examples/AdminActivityInvalidTime"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1040,8 +1181,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminActivityApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/AdminActivitySuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1074,6 +1220,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/TagJobPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
@@ -1112,6 +1260,8 @@ paths:
                   $ref: "#/components/examples/TagJobSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1145,8 +1295,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TagJobApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TagJobSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1190,6 +1345,17 @@ paths:
                   $ref: "#/components/examples/TagJobExecuteSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 标签任务当前状态或规则不允许执行
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                executeFailed:
+                  $ref: "#/components/examples/TagJobExecuteFailed"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1230,6 +1396,8 @@ paths:
                       userId: 10001
                       hit: true
                       hitSource: MYSQL
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1261,6 +1429,8 @@ paths:
                         configValue: "1"
                         description: 是否启用会场缓存
                         updatedAt: "2026-05-25T10:00:00+08:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
   /api/v1/admin/dcc/configs/{configKey}:
@@ -1306,7 +1476,16 @@ paths:
                       description: 是否开启交易降级
                       updatedAt: "2026-05-25T10:05:00+08:00"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: DCC 配置 key 不存在或配置值非法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidValue:
+                  $ref: "#/components/examples/DccInvalidValue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1326,6 +1505,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/ThreadPoolListSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1347,6 +1528,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ThreadPoolRuntimeApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/ThreadPoolRuntimeSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
     put:
@@ -1380,8 +1566,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ThreadPoolRuntimeApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/ThreadPoolRuntimeSuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 线程池参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidConfig:
+                  $ref: "#/components/examples/ThreadPoolInvalidConfig"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1415,10 +1613,7 @@ paths:
           in: query
           required: false
           schema:
-            type: string
-            enum:
-              - SUCCESS
-              - FAILED
+            $ref: "#/components/schemas/RecordResultStatus"
         - name: startTime
           in: query
           required: false
@@ -1441,6 +1636,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AuditLogPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1556,6 +1753,8 @@ components:
                 message: 权限不足
                 data: null
                 traceId: trace-auth-403
+            adminRequired:
+              $ref: "#/components/examples/AuthAdminRequired"
     MarketNotFound:
       description: 活动或商品不存在
       content:
@@ -1585,7 +1784,7 @@ components:
                   orderId: ORD-20260525-0001
                 traceId: trace-order-404
     TradeInvalidStatus:
-      description: 订单状态不允许当前操作
+      description: 订单状态冲突，不允许当前操作
       content:
         application/json:
           schema:
@@ -1598,7 +1797,21 @@ components:
                 data:
                   orderId: ORD-20260525-0001
                   currentStatus: REFUNDED
+                  expectedStatus: PAID
                 traceId: trace-trade-status-001
+    InternalServerError:
+      description: 系统异常
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            systemError:
+              value:
+                code: SYSTEM_ERROR
+                message: 系统繁忙，请稍后重试
+                data: null
+                traceId: trace-system-500
 
   examples:
     AuthSessionSuccess:
@@ -1609,12 +1822,29 @@ components:
         traceId: trace-auth-001
         data:
           token: zxp-local-token-10001
-          expiresInSeconds: 7200
+          tokenType: Bearer
+          expiresInSeconds: 1800
           user:
             userId: 10001
             username: user001
             phone: "13800000001"
             role: USER
+            status: ENABLED
+    AdminAuthSessionSuccess:
+      summary: 管理员登录态返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-auth-admin-001
+        data:
+          token: zxp-local-token-admin-10000
+          tokenType: Bearer
+          expiresInSeconds: 1800
+          user:
+            userId: 10000
+            username: admin001
+            phone: "13800000999"
+            role: ADMIN
             status: ENABLED
     AuthBadCredentials:
       summary: 密码错误
@@ -1623,6 +1853,65 @@ components:
         message: 账号或密码错误
         data: null
         traceId: trace-auth-err-001
+    AuthUsernameDuplicated:
+      summary: 用户名已存在
+      value:
+        code: AUTH_USERNAME_DUPLICATED
+        message: 用户名已存在
+        data:
+          field: username
+          reason: 用户名已被占用
+        traceId: trace-auth-register-001
+    AuthPhoneDuplicated:
+      summary: 手机号已绑定
+      value:
+        code: AUTH_PHONE_DUPLICATED
+        message: 手机号已被其他账号绑定
+        data:
+          field: phone
+          reason: 手机号已被其他账号绑定
+        traceId: trace-auth-register-002
+    AuthPasswordMismatch:
+      summary: 两次密码不一致
+      value:
+        code: AUTH_PASSWORD_MISMATCH
+        message: 两次输入的密码不一致
+        data:
+          field: confirmPassword
+          reason: 两次输入的密码不一致
+        traceId: trace-auth-register-003
+    AuthPhoneInvalid:
+      summary: 手机号不合法
+      value:
+        code: AUTH_PHONE_INVALID
+        message: 手机号格式不合法
+        data:
+          field: phone
+          reason: 手机号必须为中国大陆 11 位手机号
+        traceId: trace-auth-phone-001
+    AuthCodeInvalid:
+      summary: 验证码错误或过期
+      value:
+        code: AUTH_CODE_INVALID
+        message: 验证码错误或已过期
+        data: null
+        traceId: trace-auth-err-002
+    AuthAccountDisabled:
+      summary: 账号已禁用
+      value:
+        code: AUTH_ACCOUNT_DISABLED
+        message: 账号已禁用
+        data: null
+        traceId: trace-auth-disabled-001
+    AuthAdminRequired:
+      summary: 管理端登录角色不足
+      value:
+        code: AUTH_ADMIN_REQUIRED
+        message: 当前账号不是管理员
+        data:
+          currentStatus: USER
+          expectedStatus: ADMIN
+        traceId: trace-auth-admin-403
     MarketActivityPageSuccess:
       value:
         code: "0000"
@@ -1633,19 +1922,33 @@ components:
           pageSize: 10
           total: 1
           items:
-            - activityId: 20001
-              skuId: 30001
-              title: 端午粽子双人拼团
-              goodsName: 桂花豆沙粽礼盒
-              imageUrl: https://example.com/sku/30001.png
-              category: food
-              originalPriceCent: 9900
-              groupPriceCent: 7900
-              status: ACTIVE
-              targetCount: 2
-              completeTeamCount: 18
-              processingTeamCount: 6
-              remainSeconds: 604800
+            - activity:
+                activityId: 20001
+                skuId: 30001
+                title: 端午粽子双人拼团
+                source: APP
+                channel: H5
+                status: ACTIVE
+                targetCount: 2
+                validMinutes: 30
+                startTime: "2026-05-25T09:00:00+08:00"
+                endTime: "2026-06-01T23:59:59+08:00"
+                tagId: TAG-VIP-001
+                version: 3
+              goods:
+                skuId: 30001
+                name: 桂花豆沙粽礼盒
+                imageUrl: https://example.com/sku/30001.png
+                category: food
+                originalPriceCent: 9900
+              price:
+                originalPriceCent: 9900
+                discountCent: 2000
+                payPriceCent: 7900
+              statistics:
+                completeTeamCount: 18
+                processingTeamCount: 6
+                paidOrderCount: 42
               topTeams:
                 - teamId: TEAM-20260525-001
                   activityId: 20001
@@ -1655,6 +1958,67 @@ components:
                   lockCount: 0
                   remainCount: 1
                   expireTime: "2026-05-25T10:30:00+08:00"
+    MarketActivityDetailSuccess:
+      summary: 活动详情返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-market-detail-001
+        data:
+          activity:
+            activityId: 20001
+            skuId: 30001
+            title: 端午粽子双人拼团
+            source: APP
+            channel: H5
+            status: ACTIVE
+            targetCount: 2
+            validMinutes: 30
+            startTime: "2026-05-25T09:00:00+08:00"
+            endTime: "2026-06-01T23:59:59+08:00"
+            tagId: TAG-VIP-001
+            version: 3
+          goods:
+            skuId: 30001
+            name: 桂花豆沙粽礼盒
+            imageUrl: https://example.com/sku/30001.png
+            category: food
+            originalPriceCent: 9900
+          price:
+            originalPriceCent: 9900
+            discountCent: 2000
+            payPriceCent: 7900
+          statistics:
+            completeTeamCount: 18
+            processingTeamCount: 6
+            paidOrderCount: 42
+          topTeams:
+            - teamId: TEAM-20260525-001
+              activityId: 20001
+              status: PROGRESS
+              targetCount: 2
+              completeCount: 1
+              lockCount: 0
+              remainCount: 1
+              expireTime: "2026-05-25T10:30:00+08:00"
+    MarketActivityUnavailable:
+      summary: 活动不可用
+      value:
+        code: MARKET_ACTIVITY_UNAVAILABLE
+        message: 当前活动不可用
+        traceId: trace-market-err-002
+        data:
+          activityId: 20001
+          status: ENDED
+    MarketTagNotMatched:
+      summary: 标签未命中
+      value:
+        code: MARKET_TAG_NOT_MATCHED
+        message: 当前用户不满足活动人群要求
+        traceId: trace-market-err-001
+        data:
+          activityId: 20001
+          tagId: TAG-VIP-001
     TrialSuccess:
       value:
         code: "0000"
@@ -1669,15 +2033,27 @@ components:
           discountCent: 2000
           payPriceCent: 7900
           activitySnapshot:
+            activityId: 20001
+            skuId: 30001
+            title: 端午粽子双人拼团
+            source: APP
+            channel: H5
+            status: ACTIVE
             targetCount: 2
             validMinutes: 30
+            startTime: "2026-05-25T09:00:00+08:00"
+            endTime: "2026-06-01T23:59:59+08:00"
+            tagId: TAG-VIP-001
             version: 3
           discountSnapshot:
             discountType: DIRECT
             rule: 满团立减 20 元
           tagHit:
             tagId: TAG-VIP-001
+            batchId: BATCH-20260525-001
+            userId: 10001
             hit: true
+            hitSource: REDIS
           availableTeams:
             - teamId: TEAM-20260525-001
               activityId: 20001
@@ -1688,6 +2064,44 @@ components:
               remainCount: 1
               expireTime: "2026-05-25T10:30:00+08:00"
           calculatedAt: "2026-05-25T10:00:00+08:00"
+    TrialNoAvailableTeams:
+      summary: 试算成功但暂无可参团队
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-market-trial-002
+        data:
+          trialNo: TRIAL-20260530-0002
+          activityId: 20001
+          skuId: 30001
+          eligible: true
+          originalPriceCent: 9900
+          discountCent: 2000
+          payPriceCent: 7900
+          activitySnapshot:
+            activityId: 20001
+            skuId: 30001
+            title: 端午粽子双人拼团
+            source: APP
+            channel: H5
+            status: ACTIVE
+            targetCount: 2
+            validMinutes: 30
+            startTime: "2026-05-25T09:00:00+08:00"
+            endTime: "2026-06-01T23:59:59+08:00"
+            tagId: TAG-VIP-001
+            version: 3
+          discountSnapshot:
+            discountType: DIRECT
+            rule: 满团立减 20 元
+          tagHit:
+            tagId: TAG-VIP-001
+            batchId: BATCH-20260530-001
+            userId: 10001
+            hit: true
+            hitSource: REDIS
+          availableTeams: []
+          calculatedAt: "2026-05-30T10:00:00+08:00"
     LockOrderSuccess:
       value:
         code: "0000"
@@ -1702,6 +2116,38 @@ components:
           payPriceCent: 7900
           payDeadline: "2026-05-25T10:15:00+08:00"
           canPay: true
+          idempotentReplay: false
+    LockOrderReplay:
+      summary: 重复 clientOrderNo 幂等返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-trade-lock-002
+        data:
+          orderId: ORD-20260525-0001
+          clientOrderNo: CLIENT-20260525-0001
+          teamId: TEAM-20260525-001
+          orderStatus: WAIT_PAY
+          teamStatus: PROGRESS
+          payPriceCent: 7900
+          payDeadline: "2026-05-25T10:15:00+08:00"
+          canPay: true
+          idempotentReplay: true
+    TradeTeamFull:
+      value:
+        code: TRADE_TEAM_FULL
+        message: 当前队伍已满
+        data:
+          teamId: TEAM-20260525-001
+        traceId: trace-trade-team-full-001
+    TradePriceChanged:
+      value:
+        code: TRADE_PRICE_CHANGED
+        message: 价格已变化，请重新试算
+        data:
+          activityId: 20001
+          reason: 活动或折扣版本已变化
+        traceId: trace-trade-price-001
     PaymentSuccess:
       value:
         code: "0000"
@@ -1714,6 +2160,21 @@ components:
           teamStatus: COMPLETE
           paidAt: "2026-05-25T10:02:00+08:00"
           completed: true
+          idempotentReplay: false
+    PaymentReplay:
+      summary: 重复 payNo 幂等返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-pay-002
+        data:
+          orderId: ORD-20260525-0001
+          payNo: PAY-20260525-0001
+          orderStatus: PAID
+          teamStatus: COMPLETE
+          paidAt: "2026-05-25T10:02:00+08:00"
+          completed: true
+          idempotentReplay: true
     RefundSuccess:
       value:
         code: "0000"
@@ -1726,6 +2187,41 @@ components:
           orderStatus: REFUNDED
           teamStatus: COMPLETE_AFTER_REFUND
           refundedAt: "2026-05-25T11:00:00+08:00"
+          idempotentReplay: false
+    RefundReplay:
+      summary: 重复 refundNo 幂等返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-refund-002
+        data:
+          orderId: ORD-20260525-0001
+          refundNo: RF-20260525-0001
+          refundSource: USER
+          orderStatus: REFUNDED
+          teamStatus: COMPLETE_AFTER_REFUND
+          refundedAt: "2026-05-25T11:00:00+08:00"
+          idempotentReplay: true
+    TradeDebugTimeoutCloseSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-debug-timeout-close-001
+        data:
+          orderId: ORD-20260525-0002
+          beforeStatus: WAIT_PAY
+          afterStatus: CLOSED_TIMEOUT
+          closedAt: "2026-05-25T10:16:00+08:00"
+          profile: local
+    TradeDebugNonLocalForbidden:
+      value:
+        code: AUTH_403
+        message: 权限不足
+        data:
+          resourceType: DEBUG_ENDPOINT
+          resourceId: /api/v1/debug/trade/orders/{orderId}/timeout-close
+          reason: 该端点只允许 local profile
+        traceId: trace-debug-forbidden-001
     OrderPageSuccess:
       value:
         code: "0000"
@@ -1763,6 +2259,8 @@ components:
           skuId: 30001
           goodsName: 桂花豆沙粽礼盒
           imageUrl: https://example.com/sku/30001.png
+          teamId: TEAM-20260525-001
+          teamStatus: COMPLETE
           team:
             teamId: TEAM-20260525-001
             activityId: 20001
@@ -1771,6 +2269,7 @@ components:
             completeCount: 2
             lockCount: 0
             refundCount: 0
+            remainCount: 0
             expireTime: "2026-05-25T10:30:00+08:00"
           orderStatus: PAID
           originalPriceCent: 9900
@@ -1830,6 +2329,26 @@ components:
           lastError: 下游通知失败
           createdAt: "2026-05-25T10:02:00+08:00"
           updatedAt: "2026-05-25T10:03:00+08:00"
+    AdminInvalidOperation:
+      summary: 后台操作不满足业务状态
+      value:
+        code: ADMIN_INVALID_OPERATION
+        message: 当前状态不允许执行该后台操作
+        data:
+          targetType: EVENT
+          targetId: EVT-20260525-0001
+          currentStatus: PROCESSING
+          expectedStatus: FAILED
+        traceId: trace-admin-op-409
+    AdminActivityInvalidTime:
+      summary: 活动时间窗不合法
+      value:
+        code: SYSTEM_PARAM_INVALID
+        message: 活动开始时间必须早于结束时间
+        data:
+          field: endTime
+          reason: endTime 必须晚于 startTime
+        traceId: trace-admin-activity-400
     AdminActivitySuccess:
       value:
         code: "0000"
@@ -1941,6 +2460,35 @@ components:
           status: SUCCESS
           statistics: 128
           executeTime: "2026-05-25T10:20:00+08:00"
+    TagJobExecuteFailed:
+      summary: 标签任务执行失败
+      value:
+        code: ADMIN_INVALID_OPERATION
+        message: 标签任务执行失败
+        data:
+          tagId: TAG-VIP-001
+          batchId: BATCH-20260525-001
+          status: FAILED
+          failReason: 规则表达式不合法
+        traceId: trace-tag-execute-409
+    DccInvalidValue:
+      summary: DCC 配置值非法
+      value:
+        code: SYSTEM_PARAM_INVALID
+        message: DCC 配置值不合法
+        data:
+          field: configValue
+          reason: downgradeSwitch 只允许 0 或 1
+        traceId: trace-dcc-update-400
+    ThreadPoolInvalidConfig:
+      summary: 线程池参数不合法
+      value:
+        code: SYSTEM_PARAM_INVALID
+        message: 线程池参数不合法
+        data:
+          field: maximumPoolSize
+          reason: maximumPoolSize 必须大于等于 corePoolSize
+        traceId: trace-thread-update-400
     ThreadPoolListSuccess:
       value:
         code: "0000"
@@ -1959,6 +2507,24 @@ components:
             rejectedCount: 0
             topic: zxp-thread-pool-config
             updatedAt: "2026-05-25T10:00:00+08:00"
+    ThreadPoolRuntimeSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-thread-runtime-001
+        data:
+          appName: zhongxiangpin
+          threadPoolName: reliableEventExecutor
+          corePoolSize: 8
+          maximumPoolSize: 16
+          activeCount: 3
+          poolSize: 8
+          queueType: LinkedBlockingQueue
+          queueSize: 1000
+          remainingCapacity: 972
+          rejectedCount: 0
+          topic: zxp-thread-pool-config
+          updatedAt: "2026-05-25T10:30:00+08:00"
     AuditLogPageSuccess:
       value:
         code: "0000"
@@ -1987,9 +2553,14 @@ components:
   schemas:
     ApiResponse:
       type: object
+      description: >
+        统一响应信封。M1 契约固定为 code/message/data/traceId；
+        后续所有成功和失败响应都必须通过本信封或 allOf 派生 schema 表达。
+        响应消息字段只允许使用 message，不保留旧项目 info 或 msg 等兼容别名。
       required:
         - code
         - message
+        - data
         - traceId
       properties:
         code:
@@ -1998,40 +2569,112 @@ components:
           example: "0000"
         message:
           type: string
-          description: 面向前端展示或日志定位的中文信息。
+          description: 面向前端展示或日志定位的中文信息。message 是唯一响应消息字段，不保留 info、msg 等别名。
           example: 成功
         data:
-          nullable: true
-          description: 具体响应数据，由接口定义决定。
+          description: 成功时承载业务数据；无返回数据时为 null 或布尔结果；失败时为 null 或 ErrorDetail。
         traceId:
           type: string
-          description: 请求追踪 ID。
+          description: 请求追踪 ID。响应、日志和后台审计必须使用同一值。
           example: trace-20260525-001
     ErrorResponse:
+      description: >
+        统一错误响应。错误响应仍使用 ApiResponse 信封：
+        code 为 ErrorCode，message 为中文错误说明，data 可为 null；
+        需要前端定位字段、资源或状态时，data 使用 ErrorDetail。
+        HTTP 状态必须表达协议层语义，例如 400/401/403/404/409/500；
+        body 不因错误类型改变，仍固定使用 code/message/data/traceId。
       allOf:
         - $ref: "#/components/schemas/ApiResponse"
         - type: object
+          required:
+            - code
+            - message
+            - data
+            - traceId
           properties:
             code:
               $ref: "#/components/schemas/ErrorCode"
             data:
-              nullable: true
-              description: 错误上下文，例如字段名、订单号或活动号。
+              description: 失败上下文；没有可安全暴露的上下文时为 null。
+              $ref: "#/components/schemas/ErrorDetail"
+    ErrorDetail:
+      type: object
+      nullable: true
+      description: >
+        错误详情对象。仅放入可安全暴露给前端和 Mock 的定位信息；
+        不返回异常堆栈、SQL、Redis key 或内部类名。字段不足时可用 details 承载扩展上下文。
+      additionalProperties: true
+      properties:
+        field:
+          type: string
+          description: 参数或表单字段名。
+          example: username
+        reason:
+          type: string
+          description: 失败原因或校验说明。
+          example: 用户名长度必须为 4 到 20 位
+        resourceType:
+          type: string
+          description: 资源类型。
+          example: ORDER
+        resourceId:
+          type: string
+          description: 资源 ID。
+          example: ORD-20260525-0001
+        activityId:
+          type: integer
+          format: int64
+          description: 活动 ID。
+          example: 20001
+        orderId:
+          type: string
+          description: 订单号。
+          example: ORD-20260525-0001
+        teamId:
+          type: string
+          description: 队伍号。
+          example: TEAM-20260525-001
+        tagId:
+          type: string
+          description: 标签 ID。
+          example: TAG-VIP-001
+        currentStatus:
+          type: string
+          description: 当前状态。
+          example: REFUNDED
+        expectedStatus:
+          type: string
+          description: 期望状态。
+          example: PAID
+        retryable:
+          type: boolean
+          description: 前端或治理端是否可以提示重试。
+          example: false
+        details:
+          type: object
+          description: 其他结构化上下文。
+          additionalProperties: true
     ErrorCode:
       type: string
-      description: 项目错误码。实现时可以扩展，但不得改变已有语义。
+      description: >
+        项目错误码。成功固定为 0000；失败按认证、会场、交易、后台和系统分段。
+        后续实现可以新增错误码，但不得改变已有错误码语义。
       enum:
         - "0000"
         - AUTH_401
         - AUTH_403
         - AUTH_USERNAME_DUPLICATED
+        - AUTH_PHONE_DUPLICATED
+        - AUTH_PASSWORD_MISMATCH
+        - AUTH_PHONE_INVALID
         - AUTH_BAD_CREDENTIALS
         - AUTH_CODE_INVALID
         - AUTH_ACCOUNT_DISABLED
+        - AUTH_ADMIN_REQUIRED
         - MARKET_NOT_FOUND
         - MARKET_ACTIVITY_UNAVAILABLE
         - MARKET_TAG_NOT_MATCHED
-        - TRADE_IDEMPOTENT_REPLAY
         - TRADE_TEAM_FULL
         - TRADE_ORDER_STATUS_INVALID
         - TRADE_PRICE_CHANGED
@@ -2042,6 +2685,9 @@ components:
         - SYSTEM_ERROR
     PageResponse:
       type: object
+      description: >
+        统一分页数据结构。所有分页响应必须放在 ApiResponse.data 中，
+        并固定使用 pageNo/pageSize/total/items；不再新增 list、records 等并行字段。
       required:
         - pageNo
         - pageSize
@@ -2050,31 +2696,41 @@ components:
       properties:
         pageNo:
           type: integer
+          minimum: 1
+          description: 当前页码，从 1 开始。
           example: 1
         pageSize:
           type: integer
+          minimum: 1
+          description: 每页数量。
           example: 10
         total:
           type: integer
           format: int64
+          minimum: 0
+          description: 符合条件的总条数。
           example: 1
         items:
           type: array
+          description: 当前页数据列表，具体元素类型由派生 schema 覆盖。
           items:
             type: object
 
     UserRole:
       type: string
+      description: 用户角色。P0 只区分普通用户和后台管理员。
       enum:
         - USER
         - ADMIN
     UserStatus:
       type: string
+      description: 用户账号状态。禁用账号不能登录。
       enum:
         - ENABLED
         - DISABLED
     ActivityStatus:
       type: string
+      description: 活动状态。会场、试算和锁单都必须校验活动是否可参与。
       enum:
         - DRAFT
         - ACTIVE
@@ -2082,6 +2738,7 @@ components:
         - ENDED
     OrderStatus:
       type: string
+      description: 交易订单状态。P0 不引入 CANCELED，超时关闭统一使用 CLOSED_TIMEOUT。
       enum:
         - WAIT_PAY
         - PAID
@@ -2089,6 +2746,7 @@ components:
         - CLOSED_TIMEOUT
     TeamStatus:
       type: string
+      description: 拼团队伍状态。
       enum:
         - PROGRESS
         - COMPLETE
@@ -2096,6 +2754,7 @@ components:
         - COMPLETE_AFTER_REFUND
     TaskStatus:
       type: string
+      description: 可靠事件、通知、补偿和标签任务的通用执行状态。
       enum:
         - INIT
         - PROCESSING
@@ -2104,42 +2763,75 @@ components:
         - RETRY_WAIT
     RefundSource:
       type: string
+      description: 退款来源。
       enum:
         - USER
         - ADMIN
         - AUTO_EXPIRED
     CodePurpose:
       type: string
+      description: 验证码用途。
       enum:
+        - REGISTER
         - LOGIN
         - BIND_PHONE
     EventType:
       type: string
+      description: 可靠事件类型。
       enum:
         - TEAM_COMPLETE_NOTIFY
         - REDIS_SLOT_RELEASE
         - TEAM_REBUILD
         - ORDER_TIMEOUT_REPAIR
         - REFUND_REPAIR
+    BindingStatus:
+      type: string
+      description: 商品、活动绑定和折扣等配置项的启停状态，不等同于用户账号状态。
+      enum:
+        - ENABLED
+        - DISABLED
+    RecordResultStatus:
+      type: string
+      description: 支付、退款、审计等记录的处理结果状态，不等同于订单状态。
+      enum:
+        - SUCCESS
+        - FAILED
 
     RegisterRequest:
       type: object
       required:
         - username
         - password
+        - confirmPassword
+        - phone
+        - code
       properties:
         username:
           type: string
           minLength: 4
           maxLength: 20
           pattern: "^[A-Za-z0-9_]+$"
+          description: 用户名，4 到 20 位英文、数字或下划线，注册后唯一。
         password:
           type: string
           minLength: 8
           maxLength: 64
+          format: password
+          description: 登录密码。服务端只保存 bcrypt hash，不返回明文。
+        confirmPassword:
+          type: string
+          minLength: 8
+          maxLength: 64
+          format: password
+          description: 确认密码，必须与 password 一致。
         phone:
           type: string
           pattern: "^1[3-9][0-9]{9}$"
+          description: 注册手机号，必须唯一，并与验证码发送手机号一致。
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: 注册验证码，必须来自 `/api/v1/auth/code` 且 `purpose=REGISTER`，与 phone 匹配并在有效期内。
     SendCodeRequest:
       type: object
       required:
@@ -2149,6 +2841,7 @@ components:
         phone:
           type: string
           pattern: "^1[3-9][0-9]{9}$"
+          description: 接收验证码的手机号。
         purpose:
           $ref: "#/components/schemas/CodePurpose"
     PasswordLoginRequest:
@@ -2159,9 +2852,14 @@ components:
       properties:
         account:
           type: string
-          description: 用户名或手机号
+          description: 用户名或手机号。后端根据格式识别账号类型。
         password:
           type: string
+          format: password
+        requiredRole:
+          allOf:
+            - $ref: "#/components/schemas/UserRole"
+          description: 可选请求角色。管理端登录传 ADMIN，后端必须校验登录账号角色，不信任前端授权。
     CodeLoginRequest:
       type: object
       required:
@@ -2174,6 +2872,10 @@ components:
         code:
           type: string
           pattern: "^[0-9]{6}$"
+        requiredRole:
+          allOf:
+            - $ref: "#/components/schemas/UserRole"
+          description: 可选请求角色。管理端验证码登录如需复用该接口，传 ADMIN 并由后端校验。
     CurrentUser:
       type: object
       required:
@@ -2198,13 +2900,22 @@ components:
       type: object
       required:
         - token
+        - tokenType
         - expiresInSeconds
         - user
       properties:
         token:
           type: string
+          description: "登录 token。前端请求时放入 Authorization: Bearer {token}。"
+        tokenType:
+          type: string
+          enum:
+            - Bearer
+          description: Authorization 请求头使用的 token 类型。
         expiresInSeconds:
           type: integer
+          example: 1800
+          description: 登录态剩余有效秒数。M3 后端默认由 Redis session TTL 决定。
         user:
           $ref: "#/components/schemas/CurrentUser"
     SendCodeResult:
@@ -2343,19 +3054,15 @@ components:
           type: string
           nullable: true
         status:
-          type: string
-          enum:
-            - ENABLED
-            - DISABLED
+          $ref: "#/components/schemas/BindingStatus"
     AdminActivitySaveRequest:
       allOf:
         - $ref: "#/components/schemas/AdminOperationRequest"
         - type: object
           required:
-            - activityId
             - title
-            - discountId
             - discountType
+            - discountValueCent
             - targetCount
             - validMinutes
             - takeLimitCount
@@ -2416,8 +3123,10 @@ components:
           properties:
             source:
               type: string
+              example: APP
             channel:
               type: string
+              example: H5
             skuId:
               type: integer
               format: int64
@@ -2433,6 +3142,7 @@ components:
 
     TagJobType:
       type: string
+      description: 标签任务规则类型。
       enum:
         - USERS
         - PARTICIPATE_COUNT
@@ -2666,6 +3376,7 @@ components:
         - targetType
         - targetId
         - result
+        - traceId
         - createdAt
       properties:
         auditId:
@@ -2690,16 +3401,12 @@ components:
           additionalProperties: true
           nullable: true
         result:
-          type: string
-          enum:
-            - SUCCESS
-            - FAILED
+          $ref: "#/components/schemas/RecordResultStatus"
         reason:
           type: string
           nullable: true
         traceId:
           type: string
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2716,46 +3423,20 @@ components:
     MarketActivitySummary:
       type: object
       required:
-        - activityId
-        - skuId
-        - title
-        - goodsName
-        - originalPriceCent
-        - groupPriceCent
-        - status
-        - targetCount
+        - activity
+        - goods
+        - price
+        - statistics
         - topTeams
       properties:
-        activityId:
-          type: integer
-          format: int64
-        skuId:
-          type: integer
-          format: int64
-        title:
-          type: string
-        goodsName:
-          type: string
-        imageUrl:
-          type: string
-        category:
-          type: string
-        originalPriceCent:
-          type: integer
-          format: int64
-        groupPriceCent:
-          type: integer
-          format: int64
-        status:
-          $ref: "#/components/schemas/ActivityStatus"
-        targetCount:
-          type: integer
-        completeTeamCount:
-          type: integer
-        processingTeamCount:
-          type: integer
-        remainSeconds:
-          type: integer
+        activity:
+          $ref: "#/components/schemas/ActivityConfig"
+        goods:
+          $ref: "#/components/schemas/GoodsSnapshot"
+        price:
+          $ref: "#/components/schemas/PriceSnapshot"
+        statistics:
+          $ref: "#/components/schemas/MarketStatistics"
         topTeams:
           type: array
           items:
@@ -2786,10 +3467,33 @@ components:
         - validMinutes
         - version
       properties:
+        activityId:
+          type: integer
+          format: int64
+        skuId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        source:
+          type: string
+        channel:
+          type: string
+        status:
+          $ref: "#/components/schemas/ActivityStatus"
         targetCount:
           type: integer
         validMinutes:
           type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        tagId:
+          type: string
+          nullable: true
         version:
           type: integer
     ActivityConfig:
@@ -3053,6 +3757,10 @@ components:
           format: date-time
         canPay:
           type: boolean
+        idempotentReplay:
+          type: boolean
+          default: false
+          description: 是否为同一幂等键的重复请求重放结果。成功响应 code 仍固定为 0000。
     MockPayRequest:
       type: object
       required:
@@ -3088,6 +3796,10 @@ components:
           format: date-time
         completed:
           type: boolean
+        idempotentReplay:
+          type: boolean
+          default: false
+          description: 是否为同一 payNo 的重复请求重放结果。成功响应 code 仍固定为 0000。
     UserRefundRequest:
       type: object
       required:
@@ -3143,6 +3855,45 @@ components:
         refundedAt:
           type: string
           format: date-time
+        idempotentReplay:
+          type: boolean
+          default: false
+          description: 是否为同一 refundNo 的重复请求重放结果。成功响应 code 仍固定为 0000。
+    TradeDebugTimeoutCloseRequest:
+      type: object
+      properties:
+        now:
+          type: string
+          format: date-time
+          description: 本地演示使用的当前时间；为空时由后端取当前时间。
+        reason:
+          type: string
+          minLength: 2
+          maxLength: 200
+          description: 本地调试原因。
+    TradeDebugTimeoutCloseResult:
+      type: object
+      required:
+        - orderId
+        - beforeStatus
+        - afterStatus
+        - closedAt
+        - profile
+      properties:
+        orderId:
+          type: string
+        beforeStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        afterStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        closedAt:
+          type: string
+          format: date-time
+        profile:
+          type: string
+          enum:
+            - local
+          description: 该响应只允许 local profile 产生。
 
     OrderSummary:
       type: object
@@ -3440,6 +4191,13 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/RefundResult"
+    TradeDebugTimeoutCloseApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TradeDebugTimeoutCloseResult"
     OrderPageApiResponse:
       allOf:
         - $ref: "#/components/schemas/ApiResponse"
