@@ -20,7 +20,7 @@ flowchart TB
     accTitle: Document Reading Flow
     accDescr: 文档阅读流展示从协作入口到任务执行、契约对齐、旧项目证据和验证记录的推荐顺序。
 
-    agent["AGENT.md<br/>协作规则"] --> readme["README.md<br/>项目入口"]
+    agent["AGENTS.md<br/>协作规则"] --> readme["README.md<br/>项目入口"]
     readme --> docs_map["docs/README.md<br/>文档地图"]
     docs_map --> checklist["06-task-implementation-checklist.md<br/>任务主线"]
     checklist --> sdd_tasks["docs/sdd/tasks.md<br/>门禁和分工"]
@@ -38,7 +38,7 @@ flowchart TB
 
 | 文档 | 主要功能 | 开发中什么时候读 | 什么时候更新 |
 | --- | --- | --- | --- |
-| `AGENT.md` | Agent 协作入口，约束工作区边界、文档读取顺序、旧项目参照规则、编码和总结要求。 | 每次任务开始前。 | 协作流程、上下文规则或开发纪律变化时。 |
+| `AGENTS.md` | Agent 协作入口，约束工作区边界、文档读取顺序、旧项目参照规则、编码和总结要求。 | 每次任务开始前。 | 协作流程、上下文规则或开发纪律变化时。 |
 | `README.md` | 仓库首页，说明项目目标、目录结构、技术方向和当前阶段。 | 新成员了解项目、对外展示项目时。 | 项目阶段、目录结构、文档导航或技术方向变化时。 |
 | `docs/README.md` | 文档地图，统一说明各文档职责、阅读流和更新规则。 | 不确定该读哪份文档时；交接任务前。 | 新增文档类型、调整文档职责或开发流程时。 |
 | `docs/plan/00-overview.md` | 项目概览，说明重构目标、Harness + SDD 方法论、P0 主链路和核心风险。 | 理解项目为什么这样做时。 | 项目定位、P0 范围或核心风险变化时。 |
@@ -86,6 +86,8 @@ flowchart TB
 
 ## 6. 当前阶段判断
 
-当前仓库处于文档基线统一阶段：规划、SDD、OpenAPI 和 V1 migration 已形成初稿，但后端 Maven 工程、前端 Vue 工程和自动化验证尚未落地。下一步应先完成文档统一和初始提交，再按 M1 契约验证、M2 数据库与 migration、M3 后端骨架推进。
+当前仓库已完成 M1 契约与模型收口记录：OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应为 `code/message/data/traceId`，分页为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 的契约映射保持一致。M1 未创建后端 Java 模块，符合阶段边界。
+
+M1 当前状态记录为“已验证并可作为后续阶段输入”。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。下一步可继续 M2 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖后续后端能力。M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并继续核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId 和试算时间字段映射。
 
 阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。

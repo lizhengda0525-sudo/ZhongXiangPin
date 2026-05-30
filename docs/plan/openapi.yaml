@@ -2,6 +2,9 @@ openapi: 3.0.3
 info:
   title: 众享拼 API
   version: 0.2.0
+  license:
+    name: 未指定开源许可证
+    url: https://choosealicense.com/no-permission/
   description: 众享拼 P0 接口契约。本文档是前后端、Mock、M3 后落地的后端 DTO 和验收用例的共同依据。响应消息字段统一为 message，不保留旧项目 info 兼容别名；错误响应通过 HTTP 状态表达协议层语义，同时 body 仍使用 code/message/data/traceId 信封。
 servers:
   - url: http://localhost:8091
@@ -33,6 +36,7 @@ security:
 paths:
   /api/v1/health:
     get:
+      operationId: getHealth
       tags:
         - 健康检查
       summary: 查询健康状态
@@ -62,6 +66,7 @@ paths:
 
   /api/v1/auth/register:
     post:
+      operationId: registerUser
       tags:
         - 认证
       summary: 用户注册
@@ -110,6 +115,7 @@ paths:
 
   /api/v1/auth/code:
     post:
+      operationId: sendAuthCode
       tags:
         - 认证
       summary: 发送验证码
@@ -171,6 +177,7 @@ paths:
 
   /api/v1/auth/login/password:
     post:
+      operationId: loginByPassword
       tags:
         - 认证
       summary: 密码登录
@@ -228,6 +235,7 @@ paths:
 
   /api/v1/auth/login/code:
     post:
+      operationId: loginByCode
       tags:
         - 认证
       summary: 验证码登录
@@ -277,6 +285,7 @@ paths:
 
   /api/v1/auth/me:
     get:
+      operationId: getCurrentUser
       tags:
         - 认证
       summary: 查询当前用户
@@ -305,6 +314,7 @@ paths:
 
   /api/v1/auth/logout:
     post:
+      operationId: logoutUser
       tags:
         - 认证
       summary: 登出
@@ -328,6 +338,7 @@ paths:
 
   /api/v1/market/activities:
     get:
+      operationId: listMarketActivities
       tags:
         - 会场
       summary: 查询会场活动列表
@@ -359,6 +370,7 @@ paths:
 
   /api/v1/market/activities/{activityId}:
     get:
+      operationId: getMarketActivityDetail
       tags:
         - 会场
       summary: 查询活动详情
@@ -391,6 +403,7 @@ paths:
 
   /api/v1/market/trials:
     post:
+      operationId: calculateMarketTrial
       tags:
         - 会场
       summary: 活动试算
@@ -444,6 +457,7 @@ paths:
 
   /api/v1/trade/orders/lock:
     post:
+      operationId: lockTradeOrder
       tags:
         - 交易
       summary: 锁单
@@ -500,6 +514,7 @@ paths:
 
   /api/v1/trade/payments/mock:
     post:
+      operationId: mockPayOrder
       tags:
         - 交易
       summary: Mock 支付结算
@@ -534,6 +549,7 @@ paths:
 
   /api/v1/trade/refunds:
     post:
+      operationId: refundTradeOrder
       tags:
         - 交易
       summary: 用户退款
@@ -571,6 +587,7 @@ paths:
 
   /api/v1/orders:
     get:
+      operationId: listUserOrders
       tags:
         - 订单
       summary: 查询当前用户订单列表
@@ -599,6 +616,7 @@ paths:
 
   /api/v1/orders/{orderId}:
     get:
+      operationId: getUserOrderDetail
       tags:
         - 订单
       summary: 查询当前用户订单详情
@@ -624,6 +642,7 @@ paths:
 
   /api/v1/debug/trade/orders/{orderId}/timeout-close:
     post:
+      operationId: debugTimeoutCloseTradeOrder
       tags:
         - 交易
       summary: 本地调试关闭超时未支付订单
@@ -667,6 +686,7 @@ paths:
 
   /api/v1/admin/orders:
     get:
+      operationId: listAdminOrders
       tags:
         - 后台-订单
       summary: 后台查询订单列表
@@ -748,6 +768,7 @@ paths:
 
   /api/v1/admin/orders/{orderId}:
     get:
+      operationId: getAdminOrderDetail
       tags:
         - 后台-订单
       summary: 后台查询订单详情
@@ -773,6 +794,7 @@ paths:
 
   /api/v1/admin/orders/{orderId}/refunds:
     post:
+      operationId: refundAdminOrder
       tags:
         - 后台-订单
       summary: 后台订单退款
@@ -833,6 +855,7 @@ paths:
 
   /api/v1/admin/events/overview:
     get:
+      operationId: getAdminEventOverview
       tags:
         - 后台-任务
       summary: 查询任务治理概览
@@ -863,6 +886,7 @@ paths:
 
   /api/v1/admin/events:
     get:
+      operationId: listAdminEvents
       tags:
         - 后台-任务
       summary: 查询可靠事件列表
@@ -897,6 +921,7 @@ paths:
 
   /api/v1/admin/events/{eventId}:
     get:
+      operationId: getAdminEventDetail
       tags:
         - 后台-任务
       summary: 查询可靠事件详情
@@ -919,6 +944,7 @@ paths:
 
   /api/v1/admin/events/{eventId}/execute:
     post:
+      operationId: executeAdminEvent
       tags:
         - 后台-任务
       summary: 手动执行可靠事件
@@ -962,6 +988,7 @@ paths:
 
   /api/v1/admin/events/{eventId}/retry:
     post:
+      operationId: retryAdminEvent
       tags:
         - 后台-任务
       summary: 重试失败可靠事件
@@ -1000,6 +1027,7 @@ paths:
 
   /api/v1/admin/activities:
     get:
+      operationId: listAdminActivities
       tags:
         - 后台-活动
       summary: 后台查询活动列表
@@ -1039,6 +1067,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
+      operationId: saveAdminActivity
       tags:
         - 后台-活动
       summary: 保存活动配置
@@ -1094,6 +1123,7 @@ paths:
 
   /api/v1/admin/activities/{activityId}:
     get:
+      operationId: getAdminActivityDetail
       tags:
         - 后台-活动
       summary: 后台查询活动详情
@@ -1116,6 +1146,7 @@ paths:
         "404":
           $ref: "#/components/responses/MarketNotFound"
     put:
+      operationId: updateAdminActivity
       tags:
         - 后台-活动
       summary: 更新活动配置
@@ -1154,6 +1185,7 @@ paths:
 
   /api/v1/admin/activities/{activityId}/sku-bindings:
     post:
+      operationId: bindAdminActivitySku
       tags:
         - 后台-活动
       summary: 绑定 SKU 到活动
@@ -1193,6 +1225,7 @@ paths:
 
   /api/v1/admin/tag-jobs:
     get:
+      operationId: listAdminTagJobs
       tags:
         - 后台-标签
       summary: 查询标签任务列表
@@ -1225,6 +1258,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
+      operationId: saveAdminTagJob
       tags:
         - 后台-标签
       summary: 保存标签任务
@@ -1267,6 +1301,7 @@ paths:
 
   /api/v1/admin/tag-jobs/{tagId}/{batchId}:
     put:
+      operationId: updateAdminTagJob
       tags:
         - 后台-标签
       summary: 更新标签任务
@@ -1307,6 +1342,7 @@ paths:
 
   /api/v1/admin/tag-jobs/{tagId}/{batchId}/execute:
     post:
+      operationId: executeAdminTagJob
       tags:
         - 后台-标签
       summary: 执行标签任务
@@ -1361,6 +1397,7 @@ paths:
 
   /api/v1/admin/tag-hit-check:
     get:
+      operationId: checkAdminTagHit
       tags:
         - 后台-标签
       summary: 标签命中检查
@@ -1403,6 +1440,7 @@ paths:
 
   /api/v1/admin/dcc/configs:
     get:
+      operationId: listAdminDccConfigs
       tags:
         - 后台-配置
       summary: 查询 DCC 配置
@@ -1435,6 +1473,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
   /api/v1/admin/dcc/configs/{configKey}:
     put:
+      operationId: updateAdminDccConfig
       tags:
         - 后台-配置
       summary: 更新 DCC 配置
@@ -1491,6 +1530,7 @@ paths:
 
   /api/v1/admin/thread-pools:
     get:
+      operationId: listAdminThreadPools
       tags:
         - 后台-配置
       summary: 查询线程池列表
@@ -1512,6 +1552,7 @@ paths:
 
   /api/v1/admin/thread-pools/{threadPoolName}:
     get:
+      operationId: getAdminThreadPool
       tags:
         - 后台-配置
       summary: 查询线程池配置
@@ -1536,6 +1577,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     put:
+      operationId: updateAdminThreadPool
       tags:
         - 后台-配置
       summary: 更新线程池配置
@@ -1585,6 +1627,7 @@ paths:
 
   /api/v1/admin/audit-logs:
     get:
+      operationId: listAdminAuditLogs
       tags:
         - 后台-配置
       summary: 查询审计日志

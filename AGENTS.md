@@ -1,4 +1,4 @@
-# AGENT.md
+# AGENTS.md
 
 本文是 `D:\JAVA\ZXP\zhongxiangpin` 的开发协作入口，用于管理上下文、约束开发流程和指向具体规范文档。本文保持轻量，不承载任务清单、完整规范或实现细节。
 
@@ -20,11 +20,11 @@ D:\ZXP\zhongxiangpin
 
 ## 2. 上下文读取策略
 
-`AGENT.md` 只负责说明协作边界和入口规则。详细文档职责、阅读流和更新规则统一维护在 `docs/README.md`；任务编号、范围和验收标准统一维护在 `docs/plan/06-task-implementation-checklist.md`。
+`AGENTS.md` 只负责说明协作边界和入口规则。详细文档职责、阅读流和更新规则统一维护在 `docs/README.md`；任务编号、范围和验收标准统一维护在 `docs/plan/06-task-implementation-checklist.md`。
 
 开始任务前，固定读取：
 
-1. `AGENT.md`：确认协作规则、工作区边界和停止条件。
+1. `AGENTS.md`：确认协作规则、工作区边界和停止条件。
 2. `README.md`：确认项目定位、当前阶段和目录说明。
 3. `docs/README.md`：按文档地图决定后续只读取哪些任务相关文档。
 
@@ -65,7 +65,7 @@ D:\ZXP\zhongxiangpin
 
 ## 4. 文档语言规则
 
-- 本项目所有文档必须使用中文撰写，包括 `README.md`、`AGENT.md`、`docs/**/*.md`、OpenAPI 中的 `description` 和示例说明。
+- 本项目所有文档必须使用中文撰写，包括 `README.md`、`AGENTS.md`、`docs/**/*.md`、OpenAPI 中的 `description` 和示例说明。
 - Harness、SDD、OpenAPI、Mock、API、DTO、CI、PR、P0、tag、profile、traceId、clientOrderNo 等行业术语、协议名、字段名、路径、类名、命令和任务编号可以保留英文或原始大小写。
 - 新增或修改文档时，如果引用英文资料，必须用中文转述；除接口字段、代码片段、命令输出外，不保留整段英文说明。
 - 如果发现已有文档出现英文段落或乱码，优先修复文档可读性，再继续实现任务。
@@ -161,7 +161,7 @@ app -> trigger + infrastructure
 
 后续 Agent 参与本项目时：
 
-- 把 `AGENT.md` 当作协作入口，不把它当作任务手册；任务事实源始终是 `docs/plan/06-task-implementation-checklist.md`。
+- 把 `AGENTS.md` 当作协作入口，不把它当作任务手册；任务事实源始终是 `docs/plan/06-task-implementation-checklist.md`。
 - 先确认当前任务属于哪个文档和编号。
 - 如果用户没有明确任务编号，先给出候选任务编号、判断依据和建议下一步，等用户确认后再实现。
 - 只加载当前任务必要上下文，避免上下文拥挤。

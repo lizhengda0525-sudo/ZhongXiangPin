@@ -87,10 +87,10 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 用户要求项目开发必须遵守阿里巴巴 Java 开发手册，并且代码包含完整详细的注释；项目需要把规范固化到每次 Agent 执行流程中 |
-| 目标落地 | `docs/plan/07-development-standard.md`、`AGENT.md`、`README.md`、`docs/sdd/tasks.md`、`docs/plan/06-task-implementation-checklist.md` |
+| 目标落地 | `docs/plan/07-development-standard.md`、`AGENTS.md`、`README.md`、`docs/sdd/tasks.md`、`docs/plan/06-task-implementation-checklist.md` |
 | 实现要点 | 新增项目开发规范文档；明确后端 Java 以阿里巴巴 Java 开发手册和 P3C 规约为基准；明确 public 类、接口、枚举、用例入口、领域服务、Repository port、Controller endpoint、Scheduler、任务 handler 的 Javadoc 要求；明确类、方法、字段、常量、枚举、方法内部、SQL 的注释格式；明确 UTF-8、LF、缩进、末尾换行、Maven 编译编码、数据库字符集和时区要求；明确状态机、幂等、事务、并发、补偿、权限和审计逻辑必须写清业务意图与边界；把规范检查加入 Agent 上下文读取顺序、任务就绪门禁和 PR/提交检查清单 |
 | 验收标准 | 后续任意后端任务开始前都会读取开发规范；任务总结必须说明阿里巴巴 Java 开发手册适用情况、注释完整性、编码格式和静态扫描或替代验证结果 |
-| 验证方式 | 手工检查 `AGENT.md`、`docs/sdd/tasks.md`、README 导航和任务清单均已引用开发规范；检查 `.editorconfig` 和 `.gitattributes` 已存在；后续 CI 建立后补充 P3C、编码检查或等价静态扫描 |
+| 验证方式 | 手工检查 `AGENTS.md`、`docs/sdd/tasks.md`、README 导航和任务清单均已引用开发规范；检查 `.editorconfig` 和 `.gitattributes` 已存在；后续 CI 建立后补充 P3C、编码检查或等价静态扫描 |
 | 建议提交 | `docs: add project development standards` |
 
 ## 4. M1 契约、错误码与状态枚举
@@ -160,6 +160,19 @@
 | 验收标准 | 状态机和前端展示使用同一套枚举，不写魔法字符串 |
 | 验证方式 | OpenAPI 枚举值、错误码分段和契约对齐映射一致；后续 M3/M9/M10 再落地 Java/TypeScript 枚举 |
 | 建议提交 | `docs: define status enums and error codes` |
+
+### M1 收口记录
+
+| 项目 | 结论 |
+| --- | --- |
+| 当前状态 | M1 契约与模型已验证并可作为后续阶段输入。 |
+| 覆盖范围 | OpenAPI 已覆盖 P0 用户端、管理端和运行态治理端点，可支撑后续后端、前端和 Mock 围绕同一契约推进。 |
+| 统一响应 | 响应体统一为 `code/message/data/traceId`；分页结构统一为 `pageNo/pageSize/total/items`。 |
+| 枚举与错误码 | 状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 中的契约映射保持一致。 |
+| 阶段边界 | 本次 M1 收口不创建后端 Java 模块，不修改 migration，符合 M1 只固定契约、错误码、状态枚举、Mock 示例和字段映射的边界。 |
+| 验证说明 | OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。 |
+| 解锁事项 | M2 可继续做 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖对应后端能力。 |
+| M2 风险 | `deploy/migration/V1__init_schema.sql` 当前需要纳入 Git；M2 开始前继续核对标签任务字段、活动 SKU 绑定 source/channel 继承关系、审计 `traceId` 是否应强制非空、`calculatedAt/trialTime/trial_time` 映射。 |
 
 ## 5. M2 数据库与 migration
 
