@@ -1613,10 +1613,7 @@ paths:
           in: query
           required: false
           schema:
-            type: string
-            enum:
-              - SUCCESS
-              - FAILED
+            $ref: "#/components/schemas/RecordResultStatus"
         - name: startTime
           in: query
           required: false
@@ -2660,7 +2657,9 @@ components:
           additionalProperties: true
     ErrorCode:
       type: string
-      description: 项目错误码。实现时可以扩展，但不得改变已有语义。
+      description: >
+        项目错误码。成功固定为 0000；失败按认证、会场、交易、后台和系统分段。
+        后续实现可以新增错误码，但不得改变已有错误码语义。
       enum:
         - "0000"
         - AUTH_401
@@ -2719,16 +2718,19 @@ components:
 
     UserRole:
       type: string
+      description: 用户角色。P0 只区分普通用户和后台管理员。
       enum:
         - USER
         - ADMIN
     UserStatus:
       type: string
+      description: 用户账号状态。禁用账号不能登录。
       enum:
         - ENABLED
         - DISABLED
     ActivityStatus:
       type: string
+      description: 活动状态。会场、试算和锁单都必须校验活动是否可参与。
       enum:
         - DRAFT
         - ACTIVE
@@ -2736,6 +2738,7 @@ components:
         - ENDED
     OrderStatus:
       type: string
+      description: 交易订单状态。P0 不引入 CANCELED，超时关闭统一使用 CLOSED_TIMEOUT。
       enum:
         - WAIT_PAY
         - PAID
@@ -2743,6 +2746,7 @@ components:
         - CLOSED_TIMEOUT
     TeamStatus:
       type: string
+      description: 拼团队伍状态。
       enum:
         - PROGRESS
         - COMPLETE
@@ -2750,6 +2754,7 @@ components:
         - COMPLETE_AFTER_REFUND
     TaskStatus:
       type: string
+      description: 可靠事件、通知、补偿和标签任务的通用执行状态。
       enum:
         - INIT
         - PROCESSING
@@ -2758,24 +2763,39 @@ components:
         - RETRY_WAIT
     RefundSource:
       type: string
+      description: 退款来源。
       enum:
         - USER
         - ADMIN
         - AUTO_EXPIRED
     CodePurpose:
       type: string
+      description: 验证码用途。
       enum:
         - REGISTER
         - LOGIN
         - BIND_PHONE
     EventType:
       type: string
+      description: 可靠事件类型。
       enum:
         - TEAM_COMPLETE_NOTIFY
         - REDIS_SLOT_RELEASE
         - TEAM_REBUILD
         - ORDER_TIMEOUT_REPAIR
         - REFUND_REPAIR
+    BindingStatus:
+      type: string
+      description: 商品、活动绑定和折扣等配置项的启停状态，不等同于用户账号状态。
+      enum:
+        - ENABLED
+        - DISABLED
+    RecordResultStatus:
+      type: string
+      description: 支付、退款、审计等记录的处理结果状态，不等同于订单状态。
+      enum:
+        - SUCCESS
+        - FAILED
 
     RegisterRequest:
       type: object
@@ -3034,10 +3054,7 @@ components:
           type: string
           nullable: true
         status:
-          type: string
-          enum:
-            - ENABLED
-            - DISABLED
+          $ref: "#/components/schemas/BindingStatus"
     AdminActivitySaveRequest:
       allOf:
         - $ref: "#/components/schemas/AdminOperationRequest"
@@ -3125,6 +3142,7 @@ components:
 
     TagJobType:
       type: string
+      description: 标签任务规则类型。
       enum:
         - USERS
         - PARTICIPATE_COUNT
@@ -3383,10 +3401,7 @@ components:
           additionalProperties: true
           nullable: true
         result:
-          type: string
-          enum:
-            - SUCCESS
-            - FAILED
+          $ref: "#/components/schemas/RecordResultStatus"
         reason:
           type: string
           nullable: true

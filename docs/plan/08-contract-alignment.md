@@ -26,6 +26,8 @@ M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映�
 - 所有接口响应都使用统一信封：`code/message/data/traceId`。
 - 成功响应 `code` 为 `"0000"`，`message` 为 `成功`，`data` 承载业务数据；无业务数据时 `data` 为 `null` 或明确的布尔结果。
 - 失败响应也使用同一信封，`code` 使用 `ErrorCode`，`message` 使用中文错误说明，`data` 为 `null` 或 `ErrorDetail`。`ErrorDetail` 只放字段名、资源 ID、当前状态、可重试标记等安全上下文，不暴露异常堆栈、SQL、Redis key 或内部类名。
+- 错误码按业务域分段：认证使用 `AUTH_*`，会场和试算使用 `MARKET_*`，交易、支付、退款和订单使用 `TRADE_*`，后台治理使用 `ADMIN_*`，参数与系统兜底使用 `SYSTEM_*`。
+- 旧项目 `ResponseCode` 中的 `info` 文案只作为行为参考；新项目响应消息字段统一为 `message`，不保留 `info`、`msg` 或数字错误码兼容别名。
 - `traceId` 是必填字段，必须贯穿 API 响应、日志和后台审计；Mock 示例也必须提供稳定可读的 `traceId`。
 - 分页数据只能放在 `data` 下，并固定为 `pageNo/pageSize/total/items`，不再新增 `list`、`records` 等并行字段。
 - 时间字段统一为 ISO-8601 字符串，并在 OpenAPI 中使用 `type: string` + `format: date-time`。
@@ -110,10 +112,11 @@ npm run build
 | `TeamStatus` | `PROGRESS`、`COMPLETE`、`EXPIRED_UNFORMED`、`COMPLETE_AFTER_REFUND` | `team.status` | 队伍人数和退款状态推进必须和订单事务一致。 |
 | `TaskStatus` | `INIT`、`PROCESSING`、`SUCCESS`、`FAILED`、`RETRY_WAIT` | `reliable_event.status`、`crowd_tag_job.status` | 可靠事件和标签任务共用任务状态语义。 |
 | `RefundSource` | `USER`、`ADMIN`、`AUTO_EXPIRED` | `refund_record.refund_source` | 管理员退款必须写原因和操作者，自动退款由任务产生。 |
+| `CodePurpose` | `REGISTER`、`LOGIN`、`BIND_PHONE` | Redis 验证码用途 key 或后续验证码记录 | 注册、登录和绑定手机号验证码不能混用。 |
 | `EventType` | `TEAM_COMPLETE_NOTIFY`、`REDIS_SLOT_RELEASE`、`TEAM_REBUILD`、`ORDER_TIMEOUT_REPAIR`、`REFUND_REPAIR` | `reliable_event.event_type` | 事件幂等键为 `event_type + biz_key`。 |
 | `TagJobType` | `USERS`、`PARTICIPATE_COUNT` | `crowd_tag_job.rule_type` | 标签规则表达式保存在 `rule_expr` JSON 中。 |
-| 绑定状态 | `ENABLED`、`DISABLED` | `sku.status`、`activity_sku.status`、`discount.status` | 与用户账号状态同值但语义不同，代码中应使用不同枚举或明确命名。 |
-| 支付/退款记录状态 | `SUCCESS`、`FAILED` | `pay_record.status`、`refund_record.status`、`admin_operation_log.result` | 记录结果状态，不等同于订单状态。 |
+| `BindingStatus` | `ENABLED`、`DISABLED` | `sku.status`、`activity_sku.status`、`discount.status` | 与用户账号状态同值但语义不同，代码中应使用不同枚举或明确命名。 |
+| `RecordResultStatus` | `SUCCESS`、`FAILED` | `pay_record.status`、`refund_record.status`、`admin_operation_log.result` | 记录结果状态，不等同于订单状态。 |
 
 实现规则：
 
