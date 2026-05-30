@@ -82,7 +82,9 @@ zhongxiangpin/
 
 ## 当前阶段
 
-当前阶段正在完成文档基线统一。仓库已具备 Harness + SDD 文档骨架、P0 OpenAPI 契约、V1 migration 初稿、开发规范、契约对齐规范、文档地图和路线图；后端 Maven 工程、前端 Vue 工程和自动化验证尚未落地。
+当前阶段已完成 M1 契约与模型收口记录。P0 OpenAPI 已覆盖用户端、管理端和运行态治理端点；统一响应固定为 `code/message/data/traceId`，分页固定为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与契约对齐文档中的字段映射保持一致。M1 未创建后端 Java 模块，仍符合“只固定契约、错误码、状态枚举、Mock 示例和字段映射”的阶段边界。
+
+M1 状态：已验证并可作为后续阶段输入。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning，不阻塞 M2 migration 验证，也不阻塞 M9 用户端和 M10 管理端基于 Mock 并行启动。仓库仍未落地后端 Maven 工程、前端 Vue 工程和 CI 自动化验证；`deploy/migration/V1__init_schema.sql` 需要在 M2 开始前纳入 Git 并完成空库执行验证。
 
 后续进入编码前，以 `docs/README.md` 判断文档阅读路径，以 `docs/plan/06-task-implementation-checklist.md` 作为项目推进主线，按 `docs/sdd/tasks.md` 检查任务就绪门禁，并按 `docs/harness/reference-map.md` 读取旧项目对应行为证据。
 

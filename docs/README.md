@@ -86,6 +86,8 @@ flowchart TB
 
 ## 6. 当前阶段判断
 
-当前仓库处于文档基线统一阶段：规划、SDD、OpenAPI 和 V1 migration 已形成初稿，但后端 Maven 工程、前端 Vue 工程和自动化验证尚未落地。下一步应先完成文档统一和初始提交，再按 M1 契约验证、M2 数据库与 migration、M3 后端骨架推进。
+当前仓库已完成 M1 契约与模型收口记录：OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应为 `code/message/data/traceId`，分页为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 的契约映射保持一致。M1 未创建后端 Java 模块，符合阶段边界。
+
+M1 当前状态记录为“已验证并可作为后续阶段输入”。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。下一步可继续 M2 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖后续后端能力。M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并继续核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId 和试算时间字段映射。
 
 阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。

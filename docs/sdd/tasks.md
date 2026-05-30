@@ -58,9 +58,18 @@ P0 覆盖 `docs/plan/06-task-implementation-checklist.md` 中定义的完整项�
 - 状态枚举、错误码和字段映射可以被前端、Mock、后端 DTO 和 migration 复用。
 - 不创建后端 Java DTO、Controller、Service、Mapper 或 Repository。
 
+收口状态：
+
+- M1 已验证并可作为后续阶段输入；OpenAPI lint 已确认 API description valid。
+- OpenAPI 已覆盖 P0 用户端、管理端和运行态治理端点。
+- 统一响应固定为 `code/message/data/traceId`，分页固定为 `pageNo/pageSize/total/items`。
+- 状态枚举和错误码已定义，并与契约对齐文档中的映射保持一致。
+- lint 剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning，不阻塞 M2/M9/M10。
+- M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并继续核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId 和试算时间字段映射。
+
 ### M2 数据库与 migration
 
-依赖：M1 的关键 schema、枚举和状态字段稳定。
+依赖：M1 的关键 schema、枚举和状态字段稳定；M1 收口后可继续做 migration 验证。
 
 退出标准：
 
@@ -99,7 +108,7 @@ P0 覆盖 `docs/plan/06-task-implementation-checklist.md` 中定义的完整项�
 
 ### M9 到 M10 前端并行开发
 
-依赖：M1 契约和 Mock 示例完成后可以启动壳层和 Mock 页面；真实联调依赖对应后端能力完成。
+依赖：M1 契约和 Mock 示例完成后可以启动壳层和 Mock 页面；M1 收口后 M9/M10 可基于 Mock 并行启动，真实联调依赖对应后端能力完成。
 
 退出标准：
 

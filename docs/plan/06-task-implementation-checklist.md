@@ -161,6 +161,19 @@
 | 验证方式 | OpenAPI 枚举值、错误码分段和契约对齐映射一致；后续 M3/M9/M10 再落地 Java/TypeScript 枚举 |
 | 建议提交 | `docs: define status enums and error codes` |
 
+### M1 收口记录
+
+| 项目 | 结论 |
+| --- | --- |
+| 当前状态 | M1 契约与模型已验证并可作为后续阶段输入。 |
+| 覆盖范围 | OpenAPI 已覆盖 P0 用户端、管理端和运行态治理端点，可支撑后续后端、前端和 Mock 围绕同一契约推进。 |
+| 统一响应 | 响应体统一为 `code/message/data/traceId`；分页结构统一为 `pageNo/pageSize/total/items`。 |
+| 枚举与错误码 | 状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 中的契约映射保持一致。 |
+| 阶段边界 | 本次 M1 收口不创建后端 Java 模块，不修改 migration，符合 M1 只固定契约、错误码、状态枚举、Mock 示例和字段映射的边界。 |
+| 验证说明 | OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。 |
+| 解锁事项 | M2 可继续做 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖对应后端能力。 |
+| M2 风险 | `deploy/migration/V1__init_schema.sql` 当前需要纳入 Git；M2 开始前继续核对标签任务字段、活动 SKU 绑定 source/channel 继承关系、审计 `traceId` 是否应强制非空、`calculatedAt/trialTime/trial_time` 映射。 |
+
 ## 5. M2 数据库与 migration
 
 ### ZXP-DB-001 设计用户与权限表
