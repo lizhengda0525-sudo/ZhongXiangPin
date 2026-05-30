@@ -42,7 +42,7 @@ zhongxiangpin/
 
 ## 文档导航
 
-- [开发协作入口](AGENT.md)
+- [开发协作入口](AGENTS.md)
 - [文档地图](docs/README.md)
 - [项目概览](docs/plan/00-overview.md)
 - [架构设计](docs/plan/01-architecture.md)
