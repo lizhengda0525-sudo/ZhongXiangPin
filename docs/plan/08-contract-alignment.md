@@ -32,6 +32,9 @@ M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映�
 - `message` 是唯一响应消息字段。旧项目返回字段名为 `info`，新契约统一改为 `message`；这是面向前端和 M3 DTO 的主动命名收敛，新项目禁止保留 `info`、`msg` 或其他兼容别名。
 - HTTP 状态必须与错误类型一致：参数错误使用 400，未登录使用 401，权限不足使用 403，资源不存在使用 404，幂等冲突、非法状态、队伍已满等资源状态冲突使用 409，系统异常使用 500。错误 body 仍然使用 `code/message/data/traceId` 信封，不允许为了统一 body 把所有错误都返回 200。
 - 幂等重放如果返回已有成功结果，仍属于成功响应，`code` 固定为 `"0000"`，`message` 固定为 `成功`；是否重放放在业务 `data.idempotentReplay` 等明确字段中，不使用错误码伪装成功。
+- 交易链路幂等键固定为：锁单 `clientOrderNo`、Mock 支付 `payNo`、退款 `refundNo`。重复请求返回已有成功结果时，HTTP 状态为 200，`code` 固定为 `"0000"`，`message` 固定为 `成功`，并通过 `data.idempotentReplay=true` 标记重放；不得新增 `IDEMPOTENT_SUCCESS` 等伪错误码。
+- 用户端订单列表和订单详情归属以后端登录态为准，用户端请求不得传入可信 `userId`。订单详情访问他人订单时必须返回 HTTP 403 + `AUTH_403`，订单不存在时返回 HTTP 404 + `TRADE_ORDER_NOT_FOUND`。
+- `/api/v1/debug/**` 只允许 local profile 注册和访问。非 local profile 访问必须返回 HTTP 403 + `AUTH_403`；Debug 端点不得绕过状态机、归属校验、幂等检查或统一响应信封。
 - M3 后端 `ExceptionHandler` 必须同时设置正确 HTTP 状态和统一 body；M9/M10 前端解包必须同时读取 HTTP 状态与 `code/message/data/traceId`，并且只读取 `message`；Mock 示例必须同时模拟 HTTP 状态和统一 body，禁止使用 `info` 或只返回 200。
 
 ## 5. OpenAPI 验证
@@ -133,6 +136,8 @@ npm run build
 | `activitySnapshot` | `trade_order.activity_snapshot` | JSON 快照，用于历史订单解释。 |
 | `discountSnapshot` | `trade_order.discount_snapshot` | JSON 快照，用于历史订单解释。 |
 | `trialNo`、`trialTime` | `trade_order.trial_no`、`trade_order.trial_time` | 锁单时保存试算证据。 |
+| `beforeStatus`、`afterStatus` | `trade_order.order_status` | 仅用于 local Debug 或运行态治理结果展示，不作为新的订单状态来源。 |
+| `closedAt` | `trade_order.closed_at` | 超时关闭时间；M1 只固定契约字段，M2/M7 再确认持久化和任务推进细节。 |
 | `eventId` | `reliable_event.event_id` | 事件业务 ID，单独唯一。 |
 | `eventType`、`bizKey` | `reliable_event.event_type`、`reliable_event.biz_key` | 组成可靠事件幂等唯一键。 |
 | `payload` | `reliable_event.payload` | 必须是结构化 JSON，不拼接字符串。 |

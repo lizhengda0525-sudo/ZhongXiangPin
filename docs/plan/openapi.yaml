@@ -483,21 +483,7 @@ paths:
                 success:
                   $ref: "#/components/examples/LockOrderSuccess"
                 replay:
-                  summary: 重复 clientOrderNo 幂等返回
-                  value:
-                    code: "0000"
-                    message: 成功
-                    traceId: trace-trade-lock-002
-                    data:
-                      orderId: ORD-20260525-0001
-                      clientOrderNo: CLIENT-20260525-0001
-                      teamId: TEAM-20260525-001
-                      orderStatus: WAIT_PAY
-                      teamStatus: PROGRESS
-                      payPriceCent: 7900
-                      payDeadline: "2026-05-25T10:15:00+08:00"
-                      canPay: true
-                      idempotentReplay: true
+                  $ref: "#/components/examples/LockOrderReplay"
         "409":
           description: 锁单资源状态冲突
           content:
@@ -506,12 +492,9 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 teamFull:
-                  value:
-                    code: TRADE_TEAM_FULL
-                    message: 当前队伍已满
-                    data:
-                      teamId: TEAM-20260525-001
-                    traceId: trace-trade-err-001
+                  $ref: "#/components/examples/TradeTeamFull"
+                priceChanged:
+                  $ref: "#/components/examples/TradePriceChanged"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -543,19 +526,7 @@ paths:
                 success:
                   $ref: "#/components/examples/PaymentSuccess"
                 replay:
-                  summary: 重复 payNo 幂等返回
-                  value:
-                    code: "0000"
-                    message: 成功
-                    traceId: trace-pay-002
-                    data:
-                      orderId: ORD-20260525-0001
-                      payNo: PAY-20260525-0001
-                      orderStatus: PAID
-                      teamStatus: COMPLETE
-                      paidAt: "2026-05-25T10:02:00+08:00"
-                      completed: true
-                      idempotentReplay: true
+                  $ref: "#/components/examples/PaymentReplay"
         "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "401":
@@ -589,6 +560,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/RefundSuccess"
+                replay:
+                  $ref: "#/components/examples/RefundReplay"
         "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "401":
@@ -648,6 +621,49 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/OrderNotFound"
+
+  /api/v1/debug/trade/orders/{orderId}/timeout-close:
+    post:
+      tags:
+        - 交易
+      summary: 本地调试关闭超时未支付订单
+      description: 仅 local profile 注册，用于本地演示 WAIT_PAY 订单超时关闭。非 local profile 必须返回 403，不能绕过真实状态机、归属和幂等校验。
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeDebugTimeoutCloseRequest"
+            examples:
+              normal:
+                value:
+                  now: "2026-05-25T10:16:00+08:00"
+                  reason: 本地演示未支付订单超时关闭
+      responses:
+        "200":
+          description: 本地关闭成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeDebugTimeoutCloseApiResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/TradeDebugTimeoutCloseSuccess"
+        "403":
+          description: 非 local profile 禁止访问
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                nonLocal:
+                  $ref: "#/components/examples/TradeDebugNonLocalForbidden"
+        "404":
+          $ref: "#/components/responses/OrderNotFound"
+        "409":
+          $ref: "#/components/responses/TradeInvalidStatus"
 
   /api/v1/admin/orders:
     get:
@@ -1666,6 +1682,7 @@ components:
                 data:
                   orderId: ORD-20260525-0001
                   currentStatus: REFUNDED
+                  expectedStatus: PAID
                 traceId: trace-trade-status-001
     InternalServerError:
       description: 系统异常
@@ -1984,6 +2001,38 @@ components:
           payPriceCent: 7900
           payDeadline: "2026-05-25T10:15:00+08:00"
           canPay: true
+          idempotentReplay: false
+    LockOrderReplay:
+      summary: 重复 clientOrderNo 幂等返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-trade-lock-002
+        data:
+          orderId: ORD-20260525-0001
+          clientOrderNo: CLIENT-20260525-0001
+          teamId: TEAM-20260525-001
+          orderStatus: WAIT_PAY
+          teamStatus: PROGRESS
+          payPriceCent: 7900
+          payDeadline: "2026-05-25T10:15:00+08:00"
+          canPay: true
+          idempotentReplay: true
+    TradeTeamFull:
+      value:
+        code: TRADE_TEAM_FULL
+        message: 当前队伍已满
+        data:
+          teamId: TEAM-20260525-001
+        traceId: trace-trade-team-full-001
+    TradePriceChanged:
+      value:
+        code: TRADE_PRICE_CHANGED
+        message: 价格已变化，请重新试算
+        data:
+          activityId: 20001
+          reason: 活动或折扣版本已变化
+        traceId: trace-trade-price-001
     PaymentSuccess:
       value:
         code: "0000"
@@ -1996,6 +2045,21 @@ components:
           teamStatus: COMPLETE
           paidAt: "2026-05-25T10:02:00+08:00"
           completed: true
+          idempotentReplay: false
+    PaymentReplay:
+      summary: 重复 payNo 幂等返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-pay-002
+        data:
+          orderId: ORD-20260525-0001
+          payNo: PAY-20260525-0001
+          orderStatus: PAID
+          teamStatus: COMPLETE
+          paidAt: "2026-05-25T10:02:00+08:00"
+          completed: true
+          idempotentReplay: true
     RefundSuccess:
       value:
         code: "0000"
@@ -2008,6 +2072,41 @@ components:
           orderStatus: REFUNDED
           teamStatus: COMPLETE_AFTER_REFUND
           refundedAt: "2026-05-25T11:00:00+08:00"
+          idempotentReplay: false
+    RefundReplay:
+      summary: 重复 refundNo 幂等返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-refund-002
+        data:
+          orderId: ORD-20260525-0001
+          refundNo: RF-20260525-0001
+          refundSource: USER
+          orderStatus: REFUNDED
+          teamStatus: COMPLETE_AFTER_REFUND
+          refundedAt: "2026-05-25T11:00:00+08:00"
+          idempotentReplay: true
+    TradeDebugTimeoutCloseSuccess:
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-debug-timeout-close-001
+        data:
+          orderId: ORD-20260525-0002
+          beforeStatus: WAIT_PAY
+          afterStatus: CLOSED_TIMEOUT
+          closedAt: "2026-05-25T10:16:00+08:00"
+          profile: local
+    TradeDebugNonLocalForbidden:
+      value:
+        code: AUTH_403
+        message: 权限不足
+        data:
+          resourceType: DEBUG_ENDPOINT
+          resourceId: /api/v1/debug/trade/orders/{orderId}/timeout-close
+          reason: 该端点只允许 local profile
+        traceId: trace-debug-forbidden-001
     OrderPageSuccess:
       value:
         code: "0000"
@@ -3577,6 +3676,41 @@ components:
           type: boolean
           default: false
           description: 是否为同一 refundNo 的重复请求重放结果。成功响应 code 仍固定为 0000。
+    TradeDebugTimeoutCloseRequest:
+      type: object
+      properties:
+        now:
+          type: string
+          format: date-time
+          description: 本地演示使用的当前时间；为空时由后端取当前时间。
+        reason:
+          type: string
+          minLength: 2
+          maxLength: 200
+          description: 本地调试原因。
+    TradeDebugTimeoutCloseResult:
+      type: object
+      required:
+        - orderId
+        - beforeStatus
+        - afterStatus
+        - closedAt
+        - profile
+      properties:
+        orderId:
+          type: string
+        beforeStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        afterStatus:
+          $ref: "#/components/schemas/OrderStatus"
+        closedAt:
+          type: string
+          format: date-time
+        profile:
+          type: string
+          enum:
+            - local
+          description: 该响应只允许 local profile 产生。
 
     OrderSummary:
       type: object
@@ -3874,6 +4008,13 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/RefundResult"
+    TradeDebugTimeoutCloseApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TradeDebugTimeoutCloseResult"
     OrderPageApiResponse:
       allOf:
         - $ref: "#/components/schemas/ApiResponse"
