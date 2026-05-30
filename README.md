@@ -28,7 +28,7 @@ D:\ZXP\zhongxiangpin
 
 ```text
 zhongxiangpin/
-  AGENT.md              # 开发协作入口和上下文管理规则
+  AGENTS.md             # 开发协作入口和上下文管理规则
   README.md             # Git 仓库项目介绍
   docs/README.md        # 文档地图和开发阅读流
   docs/plan/            # 规划、架构、业务、任务、验证、版本管理文档
