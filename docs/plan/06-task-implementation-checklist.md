@@ -176,6 +176,10 @@
 
 ## 5. M2 数据库与 migration
 
+### M2 收口修订计划入口
+
+当前 M2 已完成只读审计，但尚不能标记为收口。待修点、执行顺序、验证方案和停止条件统一记录在 `docs/superpowers/plans/2026-05-30-m2-migration-closeout.md`。下一阶段执行时，先按该计划修订 `deploy/migration/V1__init_schema.sql` 和 `docs/plan/08-contract-alignment.md`，验证通过后再在本文补充 M2 收口记录；验证前不得提前更新 README 为 M2 已完成。
+
 ### ZXP-DB-001 设计用户与权限表
 
 | 字段 | 内容 |

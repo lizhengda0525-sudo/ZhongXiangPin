@@ -50,6 +50,7 @@ flowchart TB
 | `docs/plan/06-task-implementation-checklist.md` | 任务实施清单，作为唯一任务事实源，定义任务编号、目标、验收标准、完整推进顺序和建议提交。 | 领取任何具体任务前。 | 新增任务、调整范围、记录实际偏差时。 |
 | `docs/plan/07-development-standard.md` | 项目开发规范，定义 Java、注释、编码格式、质量门禁和任务总结要求。 | 后端任务和工程质量相关任务前。 | 规范、注释要求、编码格式或静态扫描策略变化时。 |
 | `docs/plan/08-contract-alignment.md` | 契约对齐规范，统一 OpenAPI、Mock、前端类型和 migration 字段映射。 | 任何影响 API、Mock、前端类型或数据库字段的任务前。 | 接口字段、枚举、状态、表结构或 Mock 策略变化时。 |
+| `docs/superpowers/plans/*.md` | 阶段性执行计划归档，记录某次收口、修订或实现前的具体步骤、分工、验证方式和停止条件；不作为长期全局事实源。 | 执行复杂任务前；需要按计划交接给 Agent 或人工执行时。 | 执行计划、验证步骤、分工方式或任务状态变化时。 |
 | `docs/plan/openapi.yaml` | API 单一事实源，定义路径、请求、响应、错误码、schema 和示例。 | M1 契约任务、前端接口、Mock、M3 后端 DTO 和联调前。 | 任何 API 或字段契约变化时。 |
 | `docs/harness/README.md` | Harness 执行指南，说明旧项目只读参照规则和证据记录格式。 | 需要查看旧项目行为证据前。 | Harness 使用规则或证据格式变化时。 |
 | `docs/harness/reference-map.md` | Harness 参考索引，列出每类任务应查看的旧项目文件和提取重点。 | 实现任务前查旧项目路径时。 | 旧项目参考范围或任务证据要求变化时。 |
@@ -88,6 +89,6 @@ flowchart TB
 
 当前仓库已完成 M1 契约与模型收口记录：OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应为 `code/message/data/traceId`，分页为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 的契约映射保持一致。M1 未创建后端 Java 模块，符合阶段边界。
 
-M1 当前状态记录为“已验证并可作为后续阶段输入”。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。下一步可继续 M2 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖后续后端能力。M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并继续核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId 和试算时间字段映射。
+M1 当前状态记录为“已验证并可作为后续阶段输入”。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。下一步可继续 M2 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖后续后端能力。M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并按 `docs/superpowers/plans/2026-05-30-m2-migration-closeout.md` 核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId、试算时间字段映射、可靠事件执行时间和种子数据。
 
 阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。
