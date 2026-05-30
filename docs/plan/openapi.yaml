@@ -764,6 +764,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/OrderDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -809,6 +811,21 @@ paths:
                       orderStatus: REFUNDED
                       teamStatus: COMPLETE_AFTER_REFUND
                       refundedAt: "2026-05-25T11:00:00+08:00"
+                replay:
+                  value:
+                    code: "0000"
+                    message: 成功
+                    traceId: trace-admin-refund-replay-001
+                    data:
+                      orderId: ORD-20260525-0001
+                      refundNo: RF-ADMIN-20260525-0001
+                      refundSource: ADMIN
+                      orderStatus: REFUNDED
+                      teamStatus: COMPLETE_AFTER_REFUND
+                      refundedAt: "2026-05-25T11:00:00+08:00"
+                      idempotentReplay: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "409":
           $ref: "#/components/responses/TradeInvalidStatus"
         "403":
@@ -839,6 +856,8 @@ paths:
                       retryWaitCount: 2
                       failedCount: 1
                       successTodayCount: 18
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -871,6 +890,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/EventPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -891,6 +912,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/EventDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -923,6 +946,17 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/EventDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 任务当前状态不允许执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidOperation:
+                  $ref: "#/components/examples/AdminInvalidOperation"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -950,6 +984,17 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/EventDetailSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 任务当前状态不允许执行该操作
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidOperation:
+                  $ref: "#/components/examples/AdminInvalidOperation"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -989,6 +1034,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AdminActivityPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
@@ -1032,7 +1079,16 @@ paths:
                 success:
                   $ref: "#/components/examples/AdminActivitySuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 活动配置参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidTime:
+                  $ref: "#/components/examples/AdminActivityInvalidTime"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1053,6 +1109,10 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AdminActivitySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/MarketNotFound"
     put:
@@ -1079,7 +1139,16 @@ paths:
                 success:
                   $ref: "#/components/examples/AdminActivitySuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 活动配置参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidTime:
+                  $ref: "#/components/examples/AdminActivityInvalidTime"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1117,6 +1186,8 @@ paths:
                   $ref: "#/components/examples/AdminActivitySuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1149,6 +1220,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/TagJobPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
@@ -1187,6 +1260,8 @@ paths:
                   $ref: "#/components/examples/TagJobSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1225,6 +1300,8 @@ paths:
                   $ref: "#/components/examples/TagJobSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1268,6 +1345,17 @@ paths:
                   $ref: "#/components/examples/TagJobExecuteSuccess"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 标签任务当前状态或规则不允许执行
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                executeFailed:
+                  $ref: "#/components/examples/TagJobExecuteFailed"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1308,6 +1396,8 @@ paths:
                       userId: 10001
                       hit: true
                       hitSource: MYSQL
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1339,6 +1429,8 @@ paths:
                         configValue: "1"
                         description: 是否启用会场缓存
                         updatedAt: "2026-05-25T10:00:00+08:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
   /api/v1/admin/dcc/configs/{configKey}:
@@ -1384,7 +1476,16 @@ paths:
                       description: 是否开启交易降级
                       updatedAt: "2026-05-25T10:05:00+08:00"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: DCC 配置 key 不存在或配置值非法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidValue:
+                  $ref: "#/components/examples/DccInvalidValue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1404,6 +1505,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/ThreadPoolListSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1428,6 +1531,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/ThreadPoolRuntimeSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
     put:
@@ -1465,7 +1570,16 @@ paths:
                 success:
                   $ref: "#/components/examples/ThreadPoolRuntimeSuccess"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: 线程池参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidConfig:
+                  $ref: "#/components/examples/ThreadPoolInvalidConfig"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1525,6 +1639,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/AuditLogPageSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -1640,6 +1756,8 @@ components:
                 message: 权限不足
                 data: null
                 traceId: trace-auth-403
+            adminRequired:
+              $ref: "#/components/examples/AuthAdminRequired"
     MarketNotFound:
       description: 活动或商品不存在
       content:
@@ -2214,6 +2332,26 @@ components:
           lastError: 下游通知失败
           createdAt: "2026-05-25T10:02:00+08:00"
           updatedAt: "2026-05-25T10:03:00+08:00"
+    AdminInvalidOperation:
+      summary: 后台操作不满足业务状态
+      value:
+        code: ADMIN_INVALID_OPERATION
+        message: 当前状态不允许执行该后台操作
+        data:
+          targetType: EVENT
+          targetId: EVT-20260525-0001
+          currentStatus: PROCESSING
+          expectedStatus: FAILED
+        traceId: trace-admin-op-409
+    AdminActivityInvalidTime:
+      summary: 活动时间窗不合法
+      value:
+        code: SYSTEM_PARAM_INVALID
+        message: 活动开始时间必须早于结束时间
+        data:
+          field: endTime
+          reason: endTime 必须晚于 startTime
+        traceId: trace-admin-activity-400
     AdminActivitySuccess:
       value:
         code: "0000"
@@ -2325,6 +2463,35 @@ components:
           status: SUCCESS
           statistics: 128
           executeTime: "2026-05-25T10:20:00+08:00"
+    TagJobExecuteFailed:
+      summary: 标签任务执行失败
+      value:
+        code: ADMIN_INVALID_OPERATION
+        message: 标签任务执行失败
+        data:
+          tagId: TAG-VIP-001
+          batchId: BATCH-20260525-001
+          status: FAILED
+          failReason: 规则表达式不合法
+        traceId: trace-tag-execute-409
+    DccInvalidValue:
+      summary: DCC 配置值非法
+      value:
+        code: SYSTEM_PARAM_INVALID
+        message: DCC 配置值不合法
+        data:
+          field: configValue
+          reason: downgradeSwitch 只允许 0 或 1
+        traceId: trace-dcc-update-400
+    ThreadPoolInvalidConfig:
+      summary: 线程池参数不合法
+      value:
+        code: SYSTEM_PARAM_INVALID
+        message: 线程池参数不合法
+        data:
+          field: maximumPoolSize
+          reason: maximumPoolSize 必须大于等于 corePoolSize
+        traceId: trace-thread-update-400
     ThreadPoolListSuccess:
       value:
         code: "0000"
@@ -2876,10 +3043,9 @@ components:
         - $ref: "#/components/schemas/AdminOperationRequest"
         - type: object
           required:
-            - activityId
             - title
-            - discountId
             - discountType
+            - discountValueCent
             - targetCount
             - validMinutes
             - takeLimitCount
@@ -2940,8 +3106,10 @@ components:
           properties:
             source:
               type: string
+              example: APP
             channel:
               type: string
+              example: H5
             skuId:
               type: integer
               format: int64
@@ -3190,6 +3358,7 @@ components:
         - targetType
         - targetId
         - result
+        - traceId
         - createdAt
       properties:
         auditId:
@@ -3223,7 +3392,6 @@ components:
           nullable: true
         traceId:
           type: string
-          nullable: true
         createdAt:
           type: string
           format: date-time

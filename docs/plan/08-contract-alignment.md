@@ -94,6 +94,9 @@ npm run build
 - 前端统一从 `message` 展示错误信息，禁止读取或透传 `info`、`msg` 等旧别名；错误处理必须保留 HTTP 状态分支。
 - 订单、队伍、任务、活动、标签、退款来源等状态只能从集中枚举导出。
 - 不新增隐式 `any`。
+- 管理端不得为后台响应使用隐式 `any`；列表统一从 `data.pageNo/pageSize/total/items` 读取。
+- 后台写操作统一提交 `reason` 和 `operatorConfirm`；后端从管理员登录态生成 `operatorId/operatorName`，前端不得伪造操作者。
+- 后台 Mock 必须覆盖成功、非管理员 403、参数错误 400、状态冲突 409 和系统异常 500 中与页面相关的场景。
 - 前端不把 `userId` 作为交易归属依据，归属以后端登录态为准。
 
 ## 8. 枚举和状态映射
@@ -143,6 +146,8 @@ npm run build
 | `payload` | `reliable_event.payload` | 必须是结构化 JSON，不拼接字符串。 |
 | `operatorId`、`operatorName` | `admin_operation_log.operator_id`、`admin_operation_log.operator_name` | 后台写操作必须记录。 |
 | `traceId` | `admin_operation_log.trace_id`，API 响应信封字段 | 用于联动接口响应、日志和审计。 |
+| `configKey`、`configValue` | `dcc_config.config_key`、`dcc_config.config_value` | 更新必须校验 key 白名单和值范围。 |
+| `threadPoolName`、`corePoolSize`、`maximumPoolSize` | 运行态线程池配置或后续治理表 | M1 只固定契约字段，M7/M8 再落地动态治理实现。 |
 
 ## 10. 变更检查清单
 
