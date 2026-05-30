@@ -303,7 +303,7 @@ PR 或任务总结中必须写明：
 
 ## 9. 与其他文档的关系
 
-- `AGENT.md` 负责把本文加入每次任务的固定上下文和执行要求。
+- `AGENTS.md` 负责把本文加入每次任务的固定上下文和执行要求。
 - `docs/sdd/tasks.md` 负责把本文加入任务就绪门禁和 PR 检查。
 - `docs/plan/06-task-implementation-checklist.md` 负责记录规范建设任务和后续质量任务。
 - `docs/plan/05-validation.md` 负责记录测试、静态检查和验收证据。

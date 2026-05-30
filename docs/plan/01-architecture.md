@@ -18,7 +18,7 @@
 
 ```text
 zhongxiangpin/
-  AGENT.md
+  AGENTS.md
   README.md
   .editorconfig
   .gitattributes

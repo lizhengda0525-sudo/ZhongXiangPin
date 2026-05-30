@@ -87,10 +87,10 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 用户要求项目开发必须遵守阿里巴巴 Java 开发手册，并且代码包含完整详细的注释；项目需要把规范固化到每次 Agent 执行流程中 |
-| 目标落地 | `docs/plan/07-development-standard.md`、`AGENT.md`、`README.md`、`docs/sdd/tasks.md`、`docs/plan/06-task-implementation-checklist.md` |
+| 目标落地 | `docs/plan/07-development-standard.md`、`AGENTS.md`、`README.md`、`docs/sdd/tasks.md`、`docs/plan/06-task-implementation-checklist.md` |
 | 实现要点 | 新增项目开发规范文档；明确后端 Java 以阿里巴巴 Java 开发手册和 P3C 规约为基准；明确 public 类、接口、枚举、用例入口、领域服务、Repository port、Controller endpoint、Scheduler、任务 handler 的 Javadoc 要求；明确类、方法、字段、常量、枚举、方法内部、SQL 的注释格式；明确 UTF-8、LF、缩进、末尾换行、Maven 编译编码、数据库字符集和时区要求；明确状态机、幂等、事务、并发、补偿、权限和审计逻辑必须写清业务意图与边界；把规范检查加入 Agent 上下文读取顺序、任务就绪门禁和 PR/提交检查清单 |
 | 验收标准 | 后续任意后端任务开始前都会读取开发规范；任务总结必须说明阿里巴巴 Java 开发手册适用情况、注释完整性、编码格式和静态扫描或替代验证结果 |
-| 验证方式 | 手工检查 `AGENT.md`、`docs/sdd/tasks.md`、README 导航和任务清单均已引用开发规范；检查 `.editorconfig` 和 `.gitattributes` 已存在；后续 CI 建立后补充 P3C、编码检查或等价静态扫描 |
+| 验证方式 | 手工检查 `AGENTS.md`、`docs/sdd/tasks.md`、README 导航和任务清单均已引用开发规范；检查 `.editorconfig` 和 `.gitattributes` 已存在；后续 CI 建立后补充 P3C、编码检查或等价静态扫描 |
 | 建议提交 | `docs: add project development standards` |
 
 ## 4. M1 契约、错误码与状态枚举

@@ -20,7 +20,7 @@ flowchart TB
     accTitle: Document Reading Flow
     accDescr: 文档阅读流展示从协作入口到任务执行、契约对齐、旧项目证据和验证记录的推荐顺序。
 
-    agent["AGENT.md<br/>协作规则"] --> readme["README.md<br/>项目入口"]
+    agent["AGENTS.md<br/>协作规则"] --> readme["README.md<br/>项目入口"]
     readme --> docs_map["docs/README.md<br/>文档地图"]
     docs_map --> checklist["06-task-implementation-checklist.md<br/>任务主线"]
     checklist --> sdd_tasks["docs/sdd/tasks.md<br/>门禁和分工"]
@@ -38,7 +38,7 @@ flowchart TB
 
 | 文档 | 主要功能 | 开发中什么时候读 | 什么时候更新 |
 | --- | --- | --- | --- |
-| `AGENT.md` | Agent 协作入口，约束工作区边界、文档读取顺序、旧项目参照规则、编码和总结要求。 | 每次任务开始前。 | 协作流程、上下文规则或开发纪律变化时。 |
+| `AGENTS.md` | Agent 协作入口，约束工作区边界、文档读取顺序、旧项目参照规则、编码和总结要求。 | 每次任务开始前。 | 协作流程、上下文规则或开发纪律变化时。 |
 | `README.md` | 仓库首页，说明项目目标、目录结构、技术方向和当前阶段。 | 新成员了解项目、对外展示项目时。 | 项目阶段、目录结构、文档导航或技术方向变化时。 |
 | `docs/README.md` | 文档地图，统一说明各文档职责、阅读流和更新规则。 | 不确定该读哪份文档时；交接任务前。 | 新增文档类型、调整文档职责或开发流程时。 |
 | `docs/plan/00-overview.md` | 项目概览，说明重构目标、Harness + SDD 方法论、P0 主链路和核心风险。 | 理解项目为什么这样做时。 | 项目定位、P0 范围或核心风险变化时。 |

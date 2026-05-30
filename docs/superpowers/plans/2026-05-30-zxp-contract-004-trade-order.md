@@ -20,7 +20,7 @@
   - 负责 examples：重复 `clientOrderNo`、重复 `payNo`、重复 `refundNo`、队伍已满、订单状态冲突、订单不存在、订单归属禁止访问、local Debug 成功和非 local 禁止。
 - 修改：`docs/plan/08-contract-alignment.md`
   - 增补交易幂等、订单归属、local-only Debug、字段到 migration 的映射约束。
-- 只读：`AGENT.md`
+- 只读：`AGENTS.md`
   - 确认 M1 阶段边界和文档语言规则。
 - 只读：`README.md`
   - 确认当前阶段和 P0 主链路。
