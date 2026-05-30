@@ -376,48 +376,18 @@ paths:
                 $ref: "#/components/schemas/MarketActivityDetailApiResponse"
               examples:
                 success:
-                  value:
-                    code: "0000"
-                    message: 成功
-                    traceId: trace-market-detail-001
-                    data:
-                      activity:
-                        activityId: 20001
-                        skuId: 30001
-                        title: 端午粽子双人拼团
-                        source: APP
-                        channel: H5
-                        status: ACTIVE
-                        targetCount: 2
-                        validMinutes: 30
-                        startTime: "2026-05-25T09:00:00+08:00"
-                        endTime: "2026-06-01T23:59:59+08:00"
-                        version: 3
-                      goods:
-                        skuId: 30001
-                        name: 桂花豆沙粽礼盒
-                        imageUrl: https://example.com/sku/30001.png
-                        category: food
-                        originalPriceCent: 9900
-                      price:
-                        originalPriceCent: 9900
-                        discountCent: 2000
-                        payPriceCent: 7900
-                      statistics:
-                        completeTeamCount: 18
-                        processingTeamCount: 6
-                        paidOrderCount: 42
-                      topTeams:
-                        - teamId: TEAM-20260525-001
-                          activityId: 20001
-                          status: PROGRESS
-                          targetCount: 2
-                          completeCount: 1
-                          lockCount: 0
-                          remainCount: 1
-                          expireTime: "2026-05-25T10:30:00+08:00"
+                  $ref: "#/components/examples/MarketActivityDetailSuccess"
         "404":
           $ref: "#/components/responses/MarketNotFound"
+        "409":
+          description: 活动不可用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                activityUnavailable:
+                  $ref: "#/components/examples/MarketActivityUnavailable"
 
   /api/v1/market/trials:
     post:
@@ -449,6 +419,8 @@ paths:
               examples:
                 success:
                   $ref: "#/components/examples/TrialSuccess"
+                noAvailableTeams:
+                  $ref: "#/components/examples/TrialNoAvailableTeams"
         "403":
           description: 当前用户不满足活动人群要求
           content:
@@ -457,13 +429,18 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
                 tagNotMatched:
-                  value:
-                    code: MARKET_TAG_NOT_MATCHED
-                    message: 当前用户不满足活动人群要求
-                    data:
-                      activityId: 20001
-                      tagId: TAG-VIP-001
-                    traceId: trace-market-err-001
+                  $ref: "#/components/examples/MarketTagNotMatched"
+        "404":
+          $ref: "#/components/responses/MarketNotFound"
+        "409":
+          description: 活动不可用或状态冲突
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                activityUnavailable:
+                  $ref: "#/components/examples/MarketActivityUnavailable"
 
   /api/v1/trade/orders/lock:
     post:
@@ -1813,19 +1790,33 @@ components:
           pageSize: 10
           total: 1
           items:
-            - activityId: 20001
-              skuId: 30001
-              title: 端午粽子双人拼团
-              goodsName: 桂花豆沙粽礼盒
-              imageUrl: https://example.com/sku/30001.png
-              category: food
-              originalPriceCent: 9900
-              groupPriceCent: 7900
-              status: ACTIVE
-              targetCount: 2
-              completeTeamCount: 18
-              processingTeamCount: 6
-              remainSeconds: 604800
+            - activity:
+                activityId: 20001
+                skuId: 30001
+                title: 端午粽子双人拼团
+                source: APP
+                channel: H5
+                status: ACTIVE
+                targetCount: 2
+                validMinutes: 30
+                startTime: "2026-05-25T09:00:00+08:00"
+                endTime: "2026-06-01T23:59:59+08:00"
+                tagId: TAG-VIP-001
+                version: 3
+              goods:
+                skuId: 30001
+                name: 桂花豆沙粽礼盒
+                imageUrl: https://example.com/sku/30001.png
+                category: food
+                originalPriceCent: 9900
+              price:
+                originalPriceCent: 9900
+                discountCent: 2000
+                payPriceCent: 7900
+              statistics:
+                completeTeamCount: 18
+                processingTeamCount: 6
+                paidOrderCount: 42
               topTeams:
                 - teamId: TEAM-20260525-001
                   activityId: 20001
@@ -1835,6 +1826,67 @@ components:
                   lockCount: 0
                   remainCount: 1
                   expireTime: "2026-05-25T10:30:00+08:00"
+    MarketActivityDetailSuccess:
+      summary: 活动详情返回
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-market-detail-001
+        data:
+          activity:
+            activityId: 20001
+            skuId: 30001
+            title: 端午粽子双人拼团
+            source: APP
+            channel: H5
+            status: ACTIVE
+            targetCount: 2
+            validMinutes: 30
+            startTime: "2026-05-25T09:00:00+08:00"
+            endTime: "2026-06-01T23:59:59+08:00"
+            tagId: TAG-VIP-001
+            version: 3
+          goods:
+            skuId: 30001
+            name: 桂花豆沙粽礼盒
+            imageUrl: https://example.com/sku/30001.png
+            category: food
+            originalPriceCent: 9900
+          price:
+            originalPriceCent: 9900
+            discountCent: 2000
+            payPriceCent: 7900
+          statistics:
+            completeTeamCount: 18
+            processingTeamCount: 6
+            paidOrderCount: 42
+          topTeams:
+            - teamId: TEAM-20260525-001
+              activityId: 20001
+              status: PROGRESS
+              targetCount: 2
+              completeCount: 1
+              lockCount: 0
+              remainCount: 1
+              expireTime: "2026-05-25T10:30:00+08:00"
+    MarketActivityUnavailable:
+      summary: 活动不可用
+      value:
+        code: MARKET_ACTIVITY_UNAVAILABLE
+        message: 当前活动不可用
+        traceId: trace-market-err-002
+        data:
+          activityId: 20001
+          status: ENDED
+    MarketTagNotMatched:
+      summary: 标签未命中
+      value:
+        code: MARKET_TAG_NOT_MATCHED
+        message: 当前用户不满足活动人群要求
+        traceId: trace-market-err-001
+        data:
+          activityId: 20001
+          tagId: TAG-VIP-001
     TrialSuccess:
       value:
         code: "0000"
@@ -1849,8 +1901,17 @@ components:
           discountCent: 2000
           payPriceCent: 7900
           activitySnapshot:
+            activityId: 20001
+            skuId: 30001
+            title: 端午粽子双人拼团
+            source: APP
+            channel: H5
+            status: ACTIVE
             targetCount: 2
             validMinutes: 30
+            startTime: "2026-05-25T09:00:00+08:00"
+            endTime: "2026-06-01T23:59:59+08:00"
+            tagId: TAG-VIP-001
             version: 3
           discountSnapshot:
             discountType: DIRECT
@@ -1871,6 +1932,44 @@ components:
               remainCount: 1
               expireTime: "2026-05-25T10:30:00+08:00"
           calculatedAt: "2026-05-25T10:00:00+08:00"
+    TrialNoAvailableTeams:
+      summary: 试算成功但暂无可参团队
+      value:
+        code: "0000"
+        message: 成功
+        traceId: trace-market-trial-002
+        data:
+          trialNo: TRIAL-20260530-0002
+          activityId: 20001
+          skuId: 30001
+          eligible: true
+          originalPriceCent: 9900
+          discountCent: 2000
+          payPriceCent: 7900
+          activitySnapshot:
+            activityId: 20001
+            skuId: 30001
+            title: 端午粽子双人拼团
+            source: APP
+            channel: H5
+            status: ACTIVE
+            targetCount: 2
+            validMinutes: 30
+            startTime: "2026-05-25T09:00:00+08:00"
+            endTime: "2026-06-01T23:59:59+08:00"
+            tagId: TAG-VIP-001
+            version: 3
+          discountSnapshot:
+            discountType: DIRECT
+            rule: 满团立减 20 元
+          tagHit:
+            tagId: TAG-VIP-001
+            batchId: BATCH-20260530-001
+            userId: 10001
+            hit: true
+            hitSource: REDIS
+          availableTeams: []
+          calculatedAt: "2026-05-30T10:00:00+08:00"
     LockOrderSuccess:
       value:
         code: "0000"
@@ -3042,46 +3141,20 @@ components:
     MarketActivitySummary:
       type: object
       required:
-        - activityId
-        - skuId
-        - title
-        - goodsName
-        - originalPriceCent
-        - groupPriceCent
-        - status
-        - targetCount
+        - activity
+        - goods
+        - price
+        - statistics
         - topTeams
       properties:
-        activityId:
-          type: integer
-          format: int64
-        skuId:
-          type: integer
-          format: int64
-        title:
-          type: string
-        goodsName:
-          type: string
-        imageUrl:
-          type: string
-        category:
-          type: string
-        originalPriceCent:
-          type: integer
-          format: int64
-        groupPriceCent:
-          type: integer
-          format: int64
-        status:
-          $ref: "#/components/schemas/ActivityStatus"
-        targetCount:
-          type: integer
-        completeTeamCount:
-          type: integer
-        processingTeamCount:
-          type: integer
-        remainSeconds:
-          type: integer
+        activity:
+          $ref: "#/components/schemas/ActivityConfig"
+        goods:
+          $ref: "#/components/schemas/GoodsSnapshot"
+        price:
+          $ref: "#/components/schemas/PriceSnapshot"
+        statistics:
+          $ref: "#/components/schemas/MarketStatistics"
         topTeams:
           type: array
           items:
@@ -3112,10 +3185,33 @@ components:
         - validMinutes
         - version
       properties:
+        activityId:
+          type: integer
+          format: int64
+        skuId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        source:
+          type: string
+        channel:
+          type: string
+        status:
+          $ref: "#/components/schemas/ActivityStatus"
         targetCount:
           type: integer
         validMinutes:
           type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        tagId:
+          type: string
+          nullable: true
         version:
           type: integer
     ActivityConfig:
