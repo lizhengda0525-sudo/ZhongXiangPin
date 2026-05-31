@@ -55,6 +55,8 @@ COMPLETE -> COMPLETE_AFTER_REFUND
 - 后端生成 `orderId` 和 `teamId`。
 - 订单保存活动版本、折扣版本、原价、优惠、实付价和试算时间。
 
+Redis key、TTL、Lua 返回码、失败释放和 MySQL 兜底边界统一遵守 `docs/plan/09-redis-runtime-standard.md`。
+
 ## 支付与退款
 
 第一版使用 Mock 支付，但模型按真实支付扩展设计：
@@ -74,6 +76,8 @@ COMPLETE -> COMPLETE_AFTER_REFUND
 
 任务 payload 使用结构化 JSON，不手写字符串拼接。任务执行需要执行锁、重试次数、下次执行时间和失败原因。
 
+任务执行锁只用于短期并发保护，任务最终状态、重试次数和失败原因必须以 MySQL 可靠事件记录为准。
+
 ## 缓存与标签
 
 会场缓存要支持版本失效，避免后台修改活动后用户端长期看到旧数据。
@@ -81,6 +85,8 @@ COMPLETE -> COMPLETE_AFTER_REFUND
 会场列表查询需要批量加载统计和 top teams，避免 N+1 查询。
 
 标签命中优先使用 Redis 或本地缓存，缓存缺失时可以回查 MySQL 明细。
+
+会场缓存、标签命中缓存、空值缓存、互斥重建和版本失效的 Redis 规则统一遵守 `docs/plan/09-redis-runtime-standard.md`。
 
 ## 管理后台
 

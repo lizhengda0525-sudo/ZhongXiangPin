@@ -31,7 +31,8 @@ flowchart TB
     openapi --> alignment["08-contract-alignment.md<br/>契约对齐"]
     migration --> alignment
     alignment --> standard["07-development-standard.md<br/>开发规范"]
-    standard --> validation["05-validation.md<br/>验证证据"]
+    standard --> redis["09-redis-runtime-standard.md<br/>Redis 运行态规范"]
+    redis --> validation["05-validation.md<br/>验证证据"]
 ```
 
 ## 3. 文档职责表
@@ -50,6 +51,8 @@ flowchart TB
 | `docs/plan/06-task-implementation-checklist.md` | 任务实施清单，作为唯一任务事实源，定义任务编号、目标、验收标准、完整推进顺序和建议提交。 | 领取任何具体任务前。 | 新增任务、调整范围、记录实际偏差时。 |
 | `docs/plan/07-development-standard.md` | 项目开发规范，定义 Java、注释、编码格式、质量门禁和任务总结要求。 | 后端任务和工程质量相关任务前。 | 规范、注释要求、编码格式或静态扫描策略变化时。 |
 | `docs/plan/08-contract-alignment.md` | 契约对齐规范，统一 OpenAPI、Mock、前端类型和 migration 字段映射。 | 任何影响 API、Mock、前端类型或数据库字段的任务前。 | 接口字段、枚举、状态、表结构或 Mock 策略变化时。 |
+| `docs/plan/09-redis-runtime-standard.md` | Redis 运行态规范，定义 key、TTL、一致性、Lua、部署安全和验证边界。 | 涉及 session、验证码、缓存、锁单占位、任务锁或 Redis/MySQL 巡检时。 | Redis 用途、key 结构、TTL、Lua 规则、安全边界或验证策略变化时。 |
+| `docs/superpowers/plans/*.md` | 阶段性执行计划归档，记录某次收口、修订或实现前的具体步骤、分工、验证方式和停止条件；不作为长期全局事实源。 | 执行复杂任务前；需要按计划交接给 Agent 或人工执行时。 | 执行计划、验证步骤、分工方式或任务状态变化时。 |
 | `docs/plan/openapi.yaml` | API 单一事实源，定义路径、请求、响应、错误码、schema 和示例。 | M1 契约任务、前端接口、Mock、M3 后端 DTO 和联调前。 | 任何 API 或字段契约变化时。 |
 | `docs/harness/README.md` | Harness 执行指南，说明旧项目只读参照规则和证据记录格式。 | 需要查看旧项目行为证据前。 | Harness 使用规则或证据格式变化时。 |
 | `docs/harness/reference-map.md` | Harness 参考索引，列出每类任务应查看的旧项目文件和提取重点。 | 实现任务前查旧项目路径时。 | 旧项目参考范围或任务证据要求变化时。 |
@@ -59,6 +62,7 @@ flowchart TB
 | `docs/sdd/frontend-user/spec.md` | 用户端 SDD，定义用户端路由、API 客户端、状态、页面要求、Mock 和验证方式。 | 用户端任务开始前。 | 用户端页面、路由、状态或接口字段变化时。 |
 | `docs/sdd/frontend-admin/spec.md` | 管理端 SDD，定义后台路由、治理页面、API 客户端、权限、Mock 和验证方式。 | 管理端任务开始前。 | 管理端页面、权限、治理流程或接口字段变化时。 |
 | `docs/sdd/mock/strategy.md` | Mock 与并行开发策略，定义 OpenAPI 示例、前端内存 Mock、后端本地 Mock 和种子数据规则。 | 后端未完成但前端需要并行开发时。 | Mock 场景、数据形状或切换策略变化时。 |
+| `docs/deploy/server-docker.md` | 云服务器 Docker 环境配置方案，定义 Ubuntu、Docker、Compose、Nginx、MySQL、Redis、目录、端口、安全和验收边界。 | 规划云服务器、部署演练、发布前环境检查时。 | 服务器部署方式、端口、安全策略、数据持久化或发布流程变化时。 |
 | `deploy/migration/V1__init_schema.sql` | P0 初始表结构和数据事实源，定义用户、商品、活动、交易、可靠事件、标签、DCC 和审计表。 | M2 数据库任务、M3 后端持久化、Mapper 和数据验证前。 | 未合并前可修订；合并后只新增下一版 migration。 |
 
 ## 4. 任务启动检查
@@ -72,7 +76,8 @@ flowchart TB
 5. 如果影响接口，先更新或确认 `docs/plan/openapi.yaml`。
 6. 如果影响数据，先更新或确认 migration 和 `docs/plan/08-contract-alignment.md`。
 7. 如果是后端任务，确认 `docs/plan/07-development-standard.md` 的注释、编码和质量门禁。
-8. 明确验证方式，至少对应 `docs/plan/05-validation.md` 中的一项证据。
+8. 如果涉及 Redis session、缓存、Lua、任务锁或运行态巡检，确认 `docs/plan/09-redis-runtime-standard.md`。
+9. 明确验证方式，至少对应 `docs/plan/05-validation.md` 中的一项证据。
 
 ## 5. 文档更新规则
 
@@ -80,14 +85,15 @@ flowchart TB
 - API 字段变化：先更新 OpenAPI，再同步 SDD、Mock、前端类型和契约对齐规范。
 - 数据字段变化：更新 migration 或新增下一版 migration，并同步契约对齐规范。
 - 业务规则变化：更新业务设计、对应 SDD 和任务验收标准。
+- Redis 运行态变化：更新 Redis 运行态规范，并按影响范围同步业务设计、后端 SDD、部署文档和验证计划。
 - 架构边界变化：更新架构设计；如属于关键取舍，后续补充 ADR。
 - 验证方式变化：更新验证计划和任务门禁。
 - 发布流程变化：更新 Git 与版本管理文档，以及后续 release note。
 
 ## 6. 当前阶段判断
 
-当前仓库已完成 M1 契约与模型收口记录：OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应为 `code/message/data/traceId`，分页为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 的契约映射保持一致。M1 未创建后端 Java 模块，符合阶段边界。
+当前仓库已完成 M1 契约与模型收口，以及 M2 数据库与 migration 收口。OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应为 `code/message/data/traceId`，分页为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 的契约映射保持一致。
 
-M1 当前状态记录为“已验证并可作为后续阶段输入”。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。下一步可继续 M2 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖后续后端能力。M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并继续核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId 和试算时间字段映射。
+M2 当前状态记录为“已验证并可作为 M3 输入”。`deploy/migration/V1__init_schema.sql` 已纳入 Git，云服务器 Docker MySQL 8.4 已完成临时空库导入、关键索引检查、种子数据计数和唯一键/非空约束负向验证；临时验证库已删除。`docs/superpowers/plans/2026-05-30-m2-migration-closeout.md` 已更新为执行归档。
 
-阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。
+下一步主线是 M3 后端骨架。阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。

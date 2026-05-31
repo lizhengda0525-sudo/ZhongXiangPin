@@ -65,7 +65,7 @@ P0 覆盖 `docs/plan/06-task-implementation-checklist.md` 中定义的完整项�
 - 统一响应固定为 `code/message/data/traceId`，分页固定为 `pageNo/pageSize/total/items`。
 - 状态枚举和错误码已定义，并与契约对齐文档中的映射保持一致。
 - lint 剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning，不阻塞 M2/M9/M10。
-- M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并继续核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId 和试算时间字段映射。
+- M2 已完成上述风险收口：`deploy/migration/V1__init_schema.sql` 已纳入 Git，标签任务字段、活动 SKU 绑定来源渠道、审计 `traceId`、试算时间字段映射、可靠事件执行时间和种子数据已完成验证。
 
 ### M2 数据库与 migration
 
@@ -77,6 +77,14 @@ P0 覆盖 `docs/plan/06-task-implementation-checklist.md` 中定义的完整项�
 - 唯一键、索引和状态字段与 OpenAPI 关键 schema 对齐。
 - MySQL 作为交易事实源的兜底边界已经落在 migration 中。
 - 不创建 Mapper、Repository、领域模型或业务 handler。
+
+收口状态：
+
+- M2 已验证并可作为 M3 输入；`deploy/migration/V1__init_schema.sql` 已纳入 Git。
+- V1 migration 已在云服务器 Docker MySQL 8.4 临时空库中执行成功，验证后临时库已删除。
+- 关键唯一键和索引已覆盖入口绑定、锁单幂等、占位防重复、限购检查、可靠事件幂等、后台审计追踪和运行态查询。
+- 种子数据已覆盖管理员、普通用户、3 个 SKU、2 个活动、2 类折扣、标签主表/任务/明细和 DCC 配置。
+- 本阶段未创建 Mapper、Repository、领域模型、业务 handler 或后端 Java 模块。
 
 ### M3 后端骨架
 

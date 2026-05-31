@@ -93,6 +93,17 @@
 | 验证方式 | 手工检查 `AGENTS.md`、`docs/sdd/tasks.md`、README 导航和任务清单均已引用开发规范；检查 `.editorconfig` 和 `.gitattributes` 已存在；后续 CI 建立后补充 P3C、编码检查或等价静态扫描 |
 | 建议提交 | `docs: add project development standards` |
 
+### ZXP-DOC-005 建立 Redis 运行态规范
+
+| 字段 | 内容 |
+| --- | --- |
+| 参考依据 | 新项目规划中 Redis 承担 session、验证码、缓存、Lua 占位、任务锁和运行态巡检；`docs/plan/02-business-design.md` 已明确 Redis 只做缓存和运行态，MySQL 是交易事实源 |
+| 目标落地 | `docs/plan/09-redis-runtime-standard.md`、`README.md`、`docs/README.md`、`docs/plan/02-business-design.md`、`docs/plan/06-task-implementation-checklist.md` |
+| 实现要点 | 新增 Redis 运行态规范文档；明确 Redis 与 MySQL 事实源边界；统一 key 前缀、业务域、敏感信息处理和 TTL；固定验证码、session、会场缓存、标签命中、锁单占位、任务锁和巡检重建的使用规则；明确 Redis 成功 MySQL 失败、MySQL 成功 Redis 失败、Redis 丢失或脏数据时的处理策略；明确 Lua 只用于 Redis 内部原子操作，不替代 MySQL 条件更新和唯一键；把 Redis 规范加入文档导航、文档地图和任务启动检查 |
+| 验收标准 | 后续涉及 Redis session、缓存、Lua、任务锁或运行态巡检的任务，都能先从 Redis 运行态规范确认 key、TTL、一致性和验证边界；本任务不创建后端 Java 模块、Redis 配置类、Lua 脚本或真实运行配置 |
+| 验证方式 | 手工检查 README、docs/README、业务设计和任务清单均已引用 Redis 运行态规范；检查文档未包含敏感连接串或密码；检查 Redis 用途均能映射到 M3 到 M11 的现有任务编号；执行 `git diff --check` |
+| 建议提交 | `docs: add redis runtime standard` |
+
 ## 4. M1 契约、错误码与状态枚举
 
 ### ZXP-CONTRACT-001 完善统一响应契约
@@ -172,9 +183,29 @@
 | 阶段边界 | 本次 M1 收口不创建后端 Java 模块，不修改 migration，符合 M1 只固定契约、错误码、状态枚举、Mock 示例和字段映射的边界。 |
 | 验证说明 | OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。 |
 | 解锁事项 | M2 可继续做 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖对应后端能力。 |
-| M2 风险 | `deploy/migration/V1__init_schema.sql` 当前需要纳入 Git；M2 开始前继续核对标签任务字段、活动 SKU 绑定 source/channel 继承关系、审计 `traceId` 是否应强制非空、`calculatedAt/trialTime/trial_time` 映射。 |
+| M2 风险 | 已在 M2 收口中处理：`deploy/migration/V1__init_schema.sql` 已纳入 Git，标签任务字段、活动 SKU 绑定 source/channel、审计 `traceId`、`calculatedAt -> trial_time`、可靠事件执行时间和种子数据均已验证。 |
 
 ## 5. M2 数据库与 migration
+
+### M2 收口修订计划入口
+
+M2 收口修订已按 `docs/superpowers/plans/2026-05-30-m2-migration-closeout.md` 执行完成。该计划现在作为执行归档，记录修订点、执行顺序、验证方式、停止条件和最终结果；任务事实以本文的 M2 收口记录为准。
+
+### M2 收口记录
+
+| 项目 | 结论 |
+| --- | --- |
+| 当前状态 | M2 数据库与 migration 已验证并可作为 M3 后端骨架输入。 |
+| 覆盖范围 | `deploy/migration/V1__init_schema.sql` 已覆盖用户、商品、活动、活动 SKU 绑定、折扣、标签、队伍、订单、支付、退款、可靠事件、DCC 和管理员审计表。 |
+| 数据事实源 | MySQL 作为交易事实源的边界已落入 migration；Redis 仍只承担缓存、占位和运行态，不作为最终交易事实。 |
+| 唯一键与索引 | 已固定 `source/channel/sku_id` 入口绑定、`user_account_id/client_order_no` 锁单幂等、`team_id/occupy_no` 占位防重复、`event_type/biz_key` 可靠事件幂等、`tag_id/batch_id` 标签批次唯一键和 `trace_id` 审计追踪索引。 |
+| 种子数据 | 已包含 1 个管理员、1 个普通用户、3 个 SKU、2 个活动、2 类折扣、标签主表/任务/明细和 2 条 DCC 配置，满足 M2 最低验收数量。 |
+| 契约对齐 | `docs/plan/08-contract-alignment.md` 已同步 `source/channel`、`tagScope`、`calculatedAt -> trade_order.trial_time`、`tagRule -> crowd_tag_job.rule_expr`、标签任务统计字段、`nextExecuteTime/lastExecuteTime` 和 `traceId -> admin_operation_log.trace_id NOT NULL`。 |
+| Harness 证据 | 旧项目 `MarketMapper.xml`、`TradeMapper.xml`、`TagMapper.xml`、`MarketRepositoryImpl`、`TagRepositoryImpl` 和运行态任务 Mapper 显示 source/channel、标签批次、currentBatchId、nextExecuteTime/lastExecuteTime 是关键持久化事实；新 migration 只抽取行为和约束，不复制旧源码。 |
+| 验证说明 | 已在云服务器 Docker MySQL 8.4 的临时库中完成空库导入、关键索引检查、种子数据计数和唯一键/非空约束负向验证；验证后临时库已删除。 |
+| 阶段边界 | 本次 M2 收口未创建后端 Maven 模块、Mapper、Repository、Controller、Service、领域模型或业务 handler，符合 M2 只固定 migration、唯一键、索引和 MySQL 交易事实源的边界。 |
+| 剩余风险 | 暂未建立 CI 自动化 migration 验证；`tagRule` 仍是 API 字符串并在后续应用层归一化为 JSON；`reliable_event.next_execute_time` 继续保持数据库必填，如果后续要放宽终态事件约束需单独授权。 |
+| 解锁事项 | M3 可开始后端 Maven 多模块、统一响应、异常处理、基础配置和健康检查；M9/M10 仍可基于 M1 OpenAPI 和 Mock 并行启动。 |
 
 ### ZXP-DB-001 设计用户与权限表
 
@@ -740,7 +771,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 路线图 M12 发布演练 |
-| 目标落地 | `deploy/release-notes`、`docs/plan/03-git-versioning.md` |
+| 目标落地 | `docs/deploy/release-notes`、`docs/plan/03-git-versioning.md` |
 | 实现要点 | 每次发布记录版本号、提交范围、数据库 migration、配置变更、验证结果、回滚方式；回滚要说明应用回滚和数据库回滚策略 |
 | 验收标准 | 项目不只是能跑，还能说明如何上线和回退 |
 | 验证方式 | 按文档从 tag 重新构建一次 |
@@ -752,7 +783,7 @@
 
 | 顺序 | 任务 | 解锁条件或说明 |
 | --- | --- | --- |
-| 1 | `ZXP-DOC-001` -> `ZXP-DOC-002` -> `ZXP-DOC-003` -> `ZXP-DOC-004` | 先统一文档入口、任务卡、ADR 和开发规范；`ZXP-DOC-004` 必须先进入后续门禁。 |
+| 1 | `ZXP-DOC-001` -> `ZXP-DOC-002` -> `ZXP-DOC-003` -> `ZXP-DOC-004` -> `ZXP-DOC-005` | 先统一文档入口、任务卡、ADR、开发规范和 Redis 运行态规范；`ZXP-DOC-004` 和 `ZXP-DOC-005` 必须先进入后续门禁。 |
 | 2 | `ZXP-GIT-001` -> `ZXP-GIT-002` | 建立分支、提交和 tag 规则，避免后续任务落在不可追溯历史中。 |
 | 3 | `ZXP-CONTRACT-001` -> `ZXP-CONTRACT-002` -> `ZXP-CONTRACT-003` -> `ZXP-CONTRACT-004` -> `ZXP-CONTRACT-005` -> `ZXP-CONTRACT-006` | 先固定统一响应，再补认证、会场、交易、后台治理和枚举错误码；M1 不创建后端 Java 代码。 |
 | 4 | `ZXP-DB-001` -> `ZXP-DB-002` -> `ZXP-DB-003` -> `ZXP-DB-004` -> `ZXP-DB-005` | 在契约字段和枚举稳定后固定 V1 migration；M2 不创建 Mapper、Repository 或领域代码。 |

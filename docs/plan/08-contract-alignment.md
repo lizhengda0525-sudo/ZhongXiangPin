@@ -10,6 +10,8 @@
 
 M1 只允许修改 OpenAPI、Mock 示例、错误码、状态枚举和字段映射，不创建后端 Java DTO 或模块。M2 只允许修改 migration、种子数据约束和本文映射，不创建 Mapper、Repository 或领域代码。M3 后端骨架建立后，后端 DTO、领域枚举、Mapper 字段才开始跟随 OpenAPI 和 migration 落地。
 
+M2 收口期间只同步 `deploy/migration/V1__init_schema.sql` 与本文映射，不修改 OpenAPI 字段结构。`tagRule` 继续保持对外字符串字段，入库前由 M3 之后的应用层归一化为 `rule_expr` JSON；`reliable_event.next_execute_time` 在数据库中保持 `NOT NULL`，用于保证调度扫描有稳定时间锚点。
+
 ## 3. 单一事实源
 
 | 内容 | 单一事实源 | 使用方 |
@@ -114,7 +116,7 @@ npm run build
 | `RefundSource` | `USER`、`ADMIN`、`AUTO_EXPIRED` | `refund_record.refund_source` | 管理员退款必须写原因和操作者，自动退款由任务产生。 |
 | `CodePurpose` | `REGISTER`、`LOGIN`、`BIND_PHONE` | Redis 验证码用途 key 或后续验证码记录 | 注册、登录和绑定手机号验证码不能混用。 |
 | `EventType` | `TEAM_COMPLETE_NOTIFY`、`REDIS_SLOT_RELEASE`、`TEAM_REBUILD`、`ORDER_TIMEOUT_REPAIR`、`REFUND_REPAIR` | `reliable_event.event_type` | 事件幂等键为 `event_type + biz_key`。 |
-| `TagJobType` | `USERS`、`PARTICIPATE_COUNT` | `crowd_tag_job.rule_type` | 标签规则表达式保存在 `rule_expr` JSON 中。 |
+| `TagJobType` | `USERS`、`PARTICIPATE_COUNT` | `crowd_tag_job.rule_type` | API 使用 `tagRule` 字符串表达规则，入库前归一化到 `rule_expr` JSON。 |
 | `BindingStatus` | `ENABLED`、`DISABLED` | `sku.status`、`activity_sku.status`、`discount.status` | 与用户账号状态同值但语义不同，代码中应使用不同枚举或明确命名。 |
 | `RecordResultStatus` | `SUCCESS`、`FAILED` | `pay_record.status`、`refund_record.status`、`admin_operation_log.result` | 记录结果状态，不等同于订单状态。 |
 
@@ -129,8 +131,9 @@ npm run build
 | OpenAPI 字段 | 数据库字段 | 约束 |
 | --- | --- | --- |
 | `userId` | `user_account.id`、`trade_order.user_account_id`、`pay_record.user_account_id`、`refund_record.user_account_id` | 用户端请求中的 `userId` 不可信；交易归属以后端登录态为准。 |
-| `activityId` | `activity.activity_id`、`activity_sku.activity_id`、`discount.activity_id`、`team.activity_id`、`trade_order.activity_id` | 活动变更必须通过 `activity.version` 或精确 key 影响缓存。 |
-| `skuId` | `sku.sku_id`、`activity_sku.sku_id`、`team.sku_id`、`trade_order.sku_id` | 会场列表和锁单必须校验 SKU 与活动绑定。 |
+| `source`、`channel` | `activity.source/channel`、`activity_sku.source/channel`、`team.source/channel`、`trade_order.source/channel` | `activity_sku` 表达入口绑定事实；`team` 和 `trade_order` 保存交易发生时的来源渠道快照，不依赖活动后续变化。 |
+| `activityId` | `activity.activity_id`、`activity_sku.activity_id`、`discount.activity_id`、`team.activity_id`、`trade_order.activity_id` | 活动变更必须通过 `activity.version` 或精确 key 影响缓存；入口绑定由 `activity_sku.source/channel/sku_id` 唯一定位。 |
+| `skuId` | `sku.sku_id`、`activity_sku.sku_id`、`team.sku_id`、`trade_order.sku_id` | 会场列表和锁单必须校验 SKU 与活动绑定；同一 `source/channel/sku_id` 只能绑定一个当前活动入口。 |
 | `teamId` | `team.team_id`、`trade_order.team_id` | 参团时可传；开团由后端生成。 |
 | `orderId` | `trade_order.order_id`、`pay_record.order_id`、`refund_record.order_id` | 订单详情必须做归属或管理员权限校验。 |
 | `clientOrderNo` | `trade_order.client_order_no` | 与 `user_account_id` 组成唯一键，锁单幂等。 |
@@ -141,16 +144,30 @@ npm run build
 | `payPriceCent` / `amountCent` | `trade_order.pay_price_cent`、`pay_record.amount_cent`、`refund_record.amount_cent` | 金额单位统一为分。 |
 | `activitySnapshot` | `trade_order.activity_snapshot` | JSON 快照，用于历史订单解释。 |
 | `discountSnapshot` | `trade_order.discount_snapshot` | JSON 快照，用于历史订单解释。 |
-| `trialNo`、`trialTime` | `trade_order.trial_no`、`trade_order.trial_time` | 锁单时保存试算证据。 |
+| `trialNo`、`calculatedAt` | `trade_order.trial_no`、`trade_order.trial_time` | OpenAPI 对外使用 `calculatedAt`，数据库以 `trial_time` 保存锁单试算时间证据；不再把 `trialTime` 作为对外字段。 |
+| `tagId`、`tagScope` | `activity.tag_id`、`activity.tag_scope`、`crowd_tag.tag_id` | 活动可通过标签限定命中范围；标签主表的 `current_batch_id` 指向当前生效批次。 |
+| `tagName`、`tagDesc` | `crowd_tag.name`、`crowd_tag.tag_desc`、`crowd_tag_job.tag_name` | 标签主表保存展示信息，任务表保存执行时的标签名称快照。 |
+| `tagRule` | `crowd_tag_job.rule_expr` | API 入参和展示为字符串；应用层保存前必须归一化为 JSON，避免在数据库中拼接不可解析规则。 |
+| `batchId` | `crowd_tag.current_batch_id`、`crowd_tag_job.batch_id`、`crowd_tag_detail.batch_id` | `crowd_tag_job.batch_id` 必填，并与 `tag_id` 组成唯一键；线上命中只读取当前成功批次。 |
+| `statStartTime`、`statEndTime`、`executeTime` | `crowd_tag_job.stat_start_time/stat_end_time/execute_time` | 支撑标签任务统计窗口、执行审计和后台任务详情展示。 |
+| `statistics`、`hitCount`、`failReason` | `crowd_tag.statistics`、`crowd_tag_job.statistics/hit_count/last_error` | 标签主表保存当前批次统计，任务表保存本次执行结果和失败原因。 |
 | `beforeStatus`、`afterStatus` | `trade_order.order_status` | 仅用于 local Debug 或运行态治理结果展示，不作为新的订单状态来源。 |
 | `closedAt` | `trade_order.closed_at` | 超时关闭时间；M1 只固定契约字段，M2/M7 再确认持久化和任务推进细节。 |
 | `eventId` | `reliable_event.event_id` | 事件业务 ID，单独唯一。 |
 | `eventType`、`bizKey` | `reliable_event.event_type`、`reliable_event.biz_key` | 组成可靠事件幂等唯一键。 |
+| `nextExecuteTime`、`lastExecuteTime` | `reliable_event.next_execute_time/last_execute_time` | `next_execute_time` 数据库必填，用于 due event 扫描；`last_execute_time` 用于后台排查最近一次执行。 |
 | `payload` | `reliable_event.payload` | 必须是结构化 JSON，不拼接字符串。 |
 | `operatorId`、`operatorName` | `admin_operation_log.operator_id`、`admin_operation_log.operator_name` | 后台写操作必须记录。 |
-| `traceId` | `admin_operation_log.trace_id`，API 响应信封字段 | 用于联动接口响应、日志和审计。 |
+| `traceId` | `admin_operation_log.trace_id`，API 响应信封字段 | 审计表中必填并建立查询索引，用于联动接口响应、日志和后台审计。 |
 | `configKey`、`configValue` | `dcc_config.config_key`、`dcc_config.config_value` | 更新必须校验 key 白名单和值范围。 |
 | `threadPoolName`、`corePoolSize`、`maximumPoolSize` | 运行态线程池配置或后续治理表 | M1 只固定契约字段，M7/M8 再落地动态治理实现。 |
+
+M2 映射规则：
+
+- `activity_sku` 的唯一键为 `source/channel/sku_id`，表达同一入口下同一商品只指向一个活动；如后续需要保留禁用历史并允许重新绑定，必须在新任务中重新评估唯一键是否纳入 `status` 或改为历史表。
+- `team.source/channel` 和 `trade_order.source/channel` 是交易快照字段，不能在订单查询、补偿或审计中回读活动当前渠道替代。
+- `tagRule` 暂不改为 OpenAPI 结构化对象；如果后续要把 API 字段改为对象，必须先获得任务授权，并同步更新 OpenAPI、前端类型、Mock 和本文件。
+- `reliable_event.next_execute_time` 在数据库中保持必填；如果后续允许终态事件数据库字段为空，必须作为数据约束变更单独评估。
 
 ## 10. 变更检查清单
 
