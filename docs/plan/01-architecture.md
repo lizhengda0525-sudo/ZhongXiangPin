@@ -46,6 +46,8 @@ zhongxiangpin/
       frontend-user/spec.md
       frontend-admin/spec.md
       mock/strategy.md
+    deploy/
+      server-docker.md
     adr/
   backend/
   frontend/
@@ -53,7 +55,6 @@ zhongxiangpin/
     admin-web/
   deploy/
     migration/
-    release-notes/
 ```
 
 当前阶段只要求文档、契约和 migration 先统一。M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码。`backend/`、`frontend/user-web/` 和 `frontend/admin-web/` 可以在对应骨架任务开始前保持为空目录。
@@ -62,8 +63,8 @@ zhongxiangpin/
 
 | 目录 | 职责 | 进入实现前的状态 |
 | --- | --- | --- |
-| `docs/` | 保存规划、SDD、Harness、OpenAPI、验证和后续 ADR，是开发前的规划和契约来源。 | 必须先统一。 |
-| `deploy/` | 保存 migration、环境模板、发布说明和回滚资料；migration 是数据事实源。 | 已有 V1 migration 初稿。 |
+| `docs/` | 保存规划、SDD、Harness、OpenAPI、验证、部署方案和后续 ADR，是开发前的规划和契约来源。 | 必须先统一。 |
+| `deploy/` | 保存 migration、部署脚本和环境变量模板；migration 是数据事实源，不放说明文档。 | 已有 V1 migration 初稿。 |
 | `backend/` | 后续保存 Java 17 Spring Boot Maven 多模块。 | 等 `ZXP-BE-SKEL-001` 开始后落地。 |
 | `frontend/user-web/` | 后续保存 Vue 3 用户端工程。 | 等 `ZXP-FE-USER-001` 开始后落地。 |
 | `frontend/admin-web/` | 后续保存 Vue 3 管理端工程。 | 等 `ZXP-FE-ADMIN-001` 开始后落地。 |
@@ -112,4 +113,5 @@ frontend/
 - 数据库 migration。
 - Docker Compose 或本地启动模板。
 - 环境变量示例。
-- 发布说明和回滚说明。
+
+部署方案、发布说明和回滚说明统一放在 `docs/deploy/` 或后续约定的 `docs` 子目录中，避免文档散落在可执行部署资产目录里。

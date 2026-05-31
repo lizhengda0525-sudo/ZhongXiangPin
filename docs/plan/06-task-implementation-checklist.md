@@ -744,7 +744,7 @@
 | 字段 | 内容 |
 | --- | --- |
 | 参考依据 | 路线图 M12 发布演练 |
-| 目标落地 | `deploy/release-notes`、`docs/plan/03-git-versioning.md` |
+| 目标落地 | `docs/deploy/release-notes`、`docs/plan/03-git-versioning.md` |
 | 实现要点 | 每次发布记录版本号、提交范围、数据库 migration、配置变更、验证结果、回滚方式；回滚要说明应用回滚和数据库回滚策略 |
 | 验收标准 | 项目不只是能跑，还能说明如何上线和回退 |
 | 验证方式 | 按文档从 tag 重新构建一次 |

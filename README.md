@@ -1,4 +1,4 @@
-﻿# 众享拼 Zhongxiangpin
+# 众享拼 Zhongxiangpin
 
 众享拼是一个面向电商拼团场景的高质量工程项目，目标是构建一个具备真实业务闭环、交易可靠性、后台治理能力和工程化交付规范的前后端一体系统。
 
@@ -34,10 +34,11 @@ zhongxiangpin/
   docs/plan/            # 规划、架构、业务、任务、验证、版本管理文档
   docs/harness/         # 旧项目 Harness 参考索引和执行规则
   docs/sdd/             # 后端、前端、Mock 和任务门禁规则
+  docs/deploy/          # 部署方案、云服务器环境和发布演练文档
   backend/              # 后端工程，后续放置 Maven 多模块
   frontend/user-web/    # 用户端前端工程
   frontend/admin-web/   # 管理端前端工程
-  deploy/               # migration、部署、环境变量和发布资料
+  deploy/               # migration、部署脚本和环境变量模板，不放说明文档
 ```
 
 ## 文档导航
@@ -62,6 +63,7 @@ zhongxiangpin/
 - [用户端 SDD](docs/sdd/frontend-user/spec.md)
 - [管理端 SDD](docs/sdd/frontend-admin/spec.md)
 - [Mock 策略](docs/sdd/mock/strategy.md)
+- [云服务器 Docker 环境配置方案](docs/deploy/server-docker.md)
 - [OpenAPI 契约](docs/plan/openapi.yaml)
 
 ## P0 主链路
