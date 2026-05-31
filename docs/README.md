@@ -63,6 +63,7 @@ flowchart TB
 | `docs/sdd/frontend-admin/spec.md` | 管理端 SDD，定义后台路由、治理页面、API 客户端、权限、Mock 和验证方式。 | 管理端任务开始前。 | 管理端页面、权限、治理流程或接口字段变化时。 |
 | `docs/sdd/mock/strategy.md` | Mock 与并行开发策略，定义 OpenAPI 示例、前端内存 Mock、后端本地 Mock 和种子数据规则。 | 后端未完成但前端需要并行开发时。 | Mock 场景、数据形状或切换策略变化时。 |
 | `docs/deploy/server-docker.md` | 云服务器 Docker 环境配置方案，定义 Ubuntu、Docker、Compose、Nginx、MySQL、Redis、目录、端口、安全和验收边界。 | 规划云服务器、部署演练、发布前环境检查时。 | 服务器部署方式、端口、安全策略、数据持久化或发布流程变化时。 |
+| `docs/deploy/mysql-connection-troubleshooting.md` | MySQL 连接故障复盘与排查记录，记录旧项目配置证据、新项目修正方式、Java 版本和 JDBC 验证流程。 | 健康检查 `db: DOWN`、JDBC 连接异常、云端 MySQL 联调或本地 Java 版本异常时。 | 数据库连接参数、JDK 版本策略、云端 MySQL 暴露方式或健康检查验证方式变化时。 |
 | `deploy/migration/V1__init_schema.sql` | P0 初始表结构和数据事实源，定义用户、商品、活动、交易、可靠事件、标签、DCC 和审计表。 | M2 数据库任务、M3 后端持久化、Mapper 和数据验证前。 | 未合并前可修订；合并后只新增下一版 migration。 |
 
 ## 4. 任务启动检查

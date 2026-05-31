@@ -3,7 +3,8 @@
 
     <!-- 日志输出目录和统一格式 -->
     <!-- 格式：时间 [线程名] 级别 类名 - 消息 -->
-    <property name="LOG_DIR" value="logs"/>
+    <springProperty scope="context" name="LOG_DIR" source="zxp.logging.dir"
+                    defaultValue="${java.io.tmpdir}/zhongxiangpin/logs"/>
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
 
     <!-- 控制台输出：开发时在终端实时查看 -->

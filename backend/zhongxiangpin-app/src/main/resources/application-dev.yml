@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: "${ZXP_DB_URL:${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:zhongxiangpin_dev}?useUnicode=true&characterEncoding=utf8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&serverTimezone=Asia/Shanghai&useSSL=false&sslMode=DISABLED&allowPublicKeyRetrieval=true&sessionVariables=sql_mode='NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES'}}"
+    username: ${ZXP_DB_USERNAME:${SPRING_DATASOURCE_USERNAME:${MYSQL_USER:root}}}
+    password: ${ZXP_DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:${MYSQL_PASSWORD:}}}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      pool-name: ZXP_DEV_HIKARI
+      minimum-idle: 15
+      idle-timeout: 180000
+      maximum-pool-size: 25
+      auto-commit: true
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+      initialization-fail-timeout: -1
+  data:
+    redis:
+      host: ${ZXP_REDIS_HOST:${SPRING_DATA_REDIS_HOST:${SPRING_REDIS_HOST:${REDIS_HOST:127.0.0.1}}}}
+      port: ${ZXP_REDIS_PORT:${SPRING_DATA_REDIS_PORT:${SPRING_REDIS_PORT:${REDIS_PORT:6379}}}}
+      password: ${ZXP_REDIS_PASSWORD:${SPRING_DATA_REDIS_PASSWORD:${SPRING_REDIS_PASSWORD:${REDIS_PASSWORD:}}}}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 1

@@ -1,0 +1,24 @@
+server:
+  port: ${ZXP_SERVER_PORT:8080}
+
+spring:
+  application:
+    name: zhongxiangpin-app
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+      - optional:file:../../.env[.properties]
+  profiles:
+    active: ${ZXP_PROFILE:local}
+
+mybatis:
+  mapper-locations: classpath*:mybatis/mapper/**/*.xml
+  config-location: classpath:mybatis/config/mybatis-config.xml
+
+zxp:
+  logging:
+    dir: ${ZXP_LOG_DIR:${java.io.tmpdir}/zhongxiangpin/logs}
+  redis:
+    key-prefix: zxp
+    environment: ${ZXP_REDIS_ENV:${spring.profiles.active:local}}
