@@ -4,14 +4,15 @@
 
 ## 1. 当前阶段
 
-当前项目处于“M1 契约与模型收口”阶段：
+当前项目处于“M2 数据库与 migration 已收口，准备进入 M3 后端骨架”阶段：
 
-- 已有项目入口、规划文档、SDD、Harness 参考索引、OpenAPI 契约和 V1 migration 初稿。
+- 已有项目入口、规划文档、SDD、Harness 参考索引、OpenAPI 契约和 V1 migration。
 - M1 已完成收口记录：OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应 `code/message/data/traceId`、分页 `pageNo/pageSize/total/items`、状态枚举和错误码已与契约对齐文档映射。
+- M2 已完成收口记录：`deploy/migration/V1__init_schema.sql` 已纳入 Git，V1 migration 可在 MySQL 8.4 空库执行，关键唯一键、索引、种子数据和契约映射已验证。
 - 后端和前端目录还没有可运行工程。
 - 自动化验证、CI、发布说明和回滚说明尚未建立。
 
-当前阶段不创建后端 Java 模块，不修改 migration。M1 状态记录为“已验证并可作为后续阶段输入”；OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。下一步可继续 M2 数据库与 migration 验证，M9 用户端和 M10 管理端可基于 Mock 并行启动。
+M1 与 M2 均未创建后端 Java 模块，符合阶段边界。下一步可进入 M3 后端骨架，开始创建 Maven 多模块、统一响应、异常处理、基础配置和健康检查；M9 用户端和 M10 管理端仍可基于 Mock 并行启动。
 
 ## 2. 阶段边界
 
@@ -52,7 +53,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | M0 文档治理 | 统一 README、AGENT、文档地图、任务清单、SDD、Harness 和开发规范。 | 进行中 | 新成员能按文档地图理解项目并领取任务。 |
 | M1 契约与模型 | 固定 P0 OpenAPI、错误码、状态枚举、Mock 示例和字段映射，不落地后端 Java 代码。 | 已验证并可作为后续阶段输入 | P0 用户端、管理端、运行态端点齐全；统一响应、分页、状态枚举和错误码已与契约映射对齐；OpenAPI lint 为 valid，仅剩 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。 |
-| M2 数据库与 migration | 建立 V1 migration，固定用户、商品、活动、交易、可靠事件、标签和审计等 P0 表结构，不落地 Mapper 或 Repository。 | 初稿已存在，待纳入 Git 和验证 | migration 可在空库执行，字段与 OpenAPI 关键枚举保持一致。 |
+| M2 数据库与 migration | 建立 V1 migration，固定用户、商品、活动、交易、可靠事件、标签和审计等 P0 表结构，不落地 Mapper 或 Repository。 | 已验证并可作为 M3 输入 | V1 migration 已纳入 Git；云服务器 Docker MySQL 8.4 空库导入成功；关键唯一键、索引、种子数据和契约映射已验证。 |
 | M3 后端骨架 | 建立后端 Maven 多模块、统一响应、异常处理、基础配置和健康检查。 | 未开始 | 后端可本地启动，空骨架 `mvn test` 通过。 |
 | M4 认证权限 | 完成注册、登录、验证码、登录态、管理员权限和审计上下文。 | 未开始 | 认证 API 可用，用户端和管理端权限边界清晰。 |
 | M5 会场试算 | 完成活动列表、商品详情、活动试算、折扣、标签命中和缓存策略。 | 未开始 | 用户端可基于 API 展示会场并完成试算。 |
@@ -68,7 +69,7 @@ flowchart LR
 
 1. 完成 M0 文档统一，补齐文档地图、路线图和目录职责。
 2. 验证 M1 契约初稿，确保 OpenAPI、Mock、状态枚举和字段映射可以对齐。
-3. 完成 M2 数据库与 migration 验证，先固定 P0 事实源。
+3. M2 数据库与 migration 已验证，P0 数据事实源已固定。
 4. 开始 M3 后端骨架，让后端具备可启动、可测试的最小工程。
 5. 并行初始化用户端和管理端壳层，但只能基于 OpenAPI 和 Mock 工作，不绕过契约。
 6. 按认证、会场、交易、运行态、后台 API 的顺序推进后端能力。

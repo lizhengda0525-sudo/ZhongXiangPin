@@ -1,10 +1,10 @@
 # M2 数据库与 Migration 收口修订计划
 
-本文记录 M2 收口前必须完成的修改点、执行顺序和验收方式。当前阶段只落文档计划，不修改 `deploy/migration/V1__init_schema.sql`、不修改 `docs/plan/openapi.yaml`，也不创建 Mapper、Repository、领域代码或后端 Java 模块。
+本文记录 M2 收口前必须完成的修改点、执行顺序和验收方式，并在执行完成后保留收口结果。当前记录已执行完成：已修改 `deploy/migration/V1__init_schema.sql` 和 `docs/plan/08-contract-alignment.md`，未修改 `docs/plan/openapi.yaml`，也未创建 Mapper、Repository、领域代码或后端 Java 模块。
 
 ## 1. 目标与边界
 
-目标：把 M2 需要补齐的数据库事实源、唯一键、索引、种子数据和契约映射修订点全部前置记录，确保下一阶段执行时可以逐项验证并收口。
+目标：把 M2 需要补齐的数据库事实源、唯一键、索引、种子数据和契约映射修订点全部前置记录，并在执行完成后保留逐项验收结果，便于后续复盘。
 
 阶段边界：
 
@@ -23,7 +23,9 @@
 | Harness 行为复核 | 旧项目渠道绑定、标签任务、支付运行态和可靠事件依赖的事实字段未完全进入新 migration。 | 必须补 `source/channel`、标签批次唯一键、执行时间和补偿审计字段。 |
 | 验证方案复核 | 当前 migration 可作为初稿，但缺少种子数据和部分唯一键/索引验证点。 | M2 收口前必须完成空库执行、唯一键冲突和种子数据检查。 |
 
-当前状态判断：M2 不能标记为收口。阻塞点集中在 `deploy/migration/V1__init_schema.sql` 与 `docs/plan/08-contract-alignment.md`，不是后端代码实现问题。
+执行前阻塞判断：当时尚未满足 M2 收口条件，阻塞点集中在 `deploy/migration/V1__init_schema.sql` 与 `docs/plan/08-contract-alignment.md`，不是后端代码实现问题。
+
+执行后状态判断：M2 已完成收口，可作为 M3 后端骨架输入。V1 migration 已纳入 Git，契约对齐文档已同步字段映射，云服务器 Docker MySQL 8.4 已完成空库执行、关键索引、种子数据和唯一键/非空约束验证。
 
 ## 3. 总体执行顺序
 
@@ -36,7 +38,9 @@
 
 ## 4. 修改点总表
 
-| 编号 | 修改对象 | 当前问题 | 完善计划 | 验收方式 | 对应任务 |
+下表中的“执行前问题”保留的是收口修订前的审计结论，不代表当前仓库状态；当前状态以本文“执行后状态判断”和“执行结果”为准。
+
+| 编号 | 修改对象 | 执行前问题 | 执行动作 | 验收结果 | 对应任务 |
 | --- | --- | --- | --- | --- | --- |
 | M2-FIX-001 | `activity_sku` | 当前只表达 `activity_id + sku_id`，无法表达 OpenAPI 中 `source + channel + skuId -> activityId` 的绑定语义。 | 增加 `source`、`channel`；唯一键调整为 `source/channel/sku_id` 维度；补充按渠道、商品和状态查询的索引。 | 相同 `source/channel/sku_id` 不能重复绑定；不同渠道可绑定同一 SKU。 | `ZXP-DB-002` |
 | M2-FIX-002 | `activity` | OpenAPI 有 `tagScope` 语义，migration 只保存 `tag_id`，缺少标签适用范围。 | 增加 `tag_scope`，用于保存标签活动的命中范围或适用策略。 | 标签活动种子数据能同时表达 `tag_id` 和 `tag_scope`。 | `ZXP-DB-002` |
@@ -50,8 +54,8 @@
 | M2-FIX-010 | `reliable_event.next_execute_time` | OpenAPI 示例允许 `nextExecuteTime` 为空，migration 当前 `NOT NULL`。 | 默认保持 DB 更严格，要求待执行事件必须有下次执行时间；如果终态事件需要为空，需单独授权调整 OpenAPI 或 migration。 | 契约对齐文档说明 DB 严格约束和 API 展示语义的差异。 | `ZXP-DB-004` |
 | M2-FIX-011 | 种子数据 | 当前 migration 没有 `INSERT`，无法支撑 M2 空库验收和后续 Mock 对齐。 | 增加基础种子数据：1 个管理员、1 个普通用户、至少 3 个商品、至少 2 类折扣、至少 1 个标签活动、标签主表/任务/明细、基础 DCC 配置。 | 空库执行后可用 SQL 查询验证每类种子数据数量和关键字段。 | `ZXP-DB-001` 到 `ZXP-DB-005` |
 | M2-FIX-012 | `docs/plan/08-contract-alignment.md` | 字段映射仍有 `trialTime` 等旧命名，未完整覆盖来源渠道、标签任务和审计约束。 | 更新字段映射：`source/channel`、`calculatedAt -> trade_order.trial_time`、`traceId -> admin_operation_log.trace_id NOT NULL`、标签任务统计字段、可靠事件执行字段。 | 映射文档能逐项解释 OpenAPI 字段到数据库字段的落点。 | 契约对齐 |
-| M2-FIX-013 | `docs/plan/06-task-implementation-checklist.md` | M2 任务仍是初始任务卡，缺少本轮审计后的收口阻塞记录。 | M2 验证通过后补充 M2 收口记录；验证前只保留本计划入口，不提前标记完成。 | 清单中能区分“待修计划已落文档”和“M2 已收口”。 | 收口记录 |
-| M2-FIX-014 | `README.md` | 当前阶段仍停留在 M1 已完成、M2 待开始。 | 只有 M2 验证通过后，才更新当前阶段为 M2 已验证并可作为 M3 输入。 | README 不提前声明未完成里程碑。 | 收口记录 |
+| M2-FIX-013 | `docs/plan/06-task-implementation-checklist.md` | 执行前 M2 任务仍是初始任务卡，缺少本轮审计后的收口阻塞记录。 | M2 验证通过后补充 M2 收口记录；验证前只保留本计划入口，不提前标记完成。 | 清单已区分“执行计划归档”和“M2 已收口”。 | 收口记录 |
+| M2-FIX-014 | `README.md` | 执行前 README 阶段说明仍停留在 M1 已完成、M2 未收口。 | 只有 M2 验证通过后，才更新当前阶段为 M2 已验证并可作为 M3 输入。 | README 已更新为 M2 已验证并可作为 M3 输入。 | 收口记录 |
 
 ## 5. 分任务执行计划
 
@@ -238,3 +242,17 @@ SELECT COUNT(*) FROM dcc_config;
 - `08-contract-alignment.md` 已同步所有字段映射和差异说明。
 - `06-task-implementation-checklist.md` 已记录 M2 收口结论、验证结果、Harness 证据和剩余风险。
 - 未创建 M3 才允许出现的后端 Java 模块、Mapper、Repository 或领域代码。
+
+## 12. 执行结果
+
+| 项目 | 结论 |
+| --- | --- |
+| migration 修订 | 已完成，提交 `049294a feat: add m2 migration schema baseline`。 |
+| 契约映射同步 | 已完成，提交 `f519ba8 docs: align m2 migration contract mappings`。 |
+| OpenAPI 边界 | 未修改 OpenAPI；`tagRule` 继续作为字符串，后续应用层归一化为 `rule_expr` JSON。 |
+| `next_execute_time` 边界 | 数据库继续保持 `NOT NULL`，用于调度扫描；未放宽终态事件的 DB 约束。 |
+| 空库验证 | 本地 MySQL 客户端不支持服务端认证插件，已改用云服务器 `zxp-mysql` Docker MySQL 8.4 临时库执行成功，验证后已删除临时库。 |
+| 关键索引验证 | 已检查 `activity_sku`、`trade_order`、`crowd_tag_job`、`reliable_event`、`admin_operation_log` 的关键唯一键和索引。 |
+| 种子数据验证 | 已验证 SKU 3、折扣 2、管理员 1、普通用户 1、标签 1、标签任务 1、标签明细 1、DCC 配置 2。 |
+| 负向约束验证 | 重复 username、重复入口绑定、重复标签批次、重复可靠事件业务键和空 `trace_id` 均被数据库拒绝。 |
+| 阶段边界 | 未创建后端 Maven 模块、Mapper、Repository、Controller、Service、领域模型或业务 handler。 |

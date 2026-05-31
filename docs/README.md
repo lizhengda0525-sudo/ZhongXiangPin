@@ -92,8 +92,8 @@ flowchart TB
 
 ## 6. 当前阶段判断
 
-当前仓库已完成 M1 契约与模型收口记录：OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应为 `code/message/data/traceId`，分页为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 的契约映射保持一致。M1 未创建后端 Java 模块，符合阶段边界。
+当前仓库已完成 M1 契约与模型收口，以及 M2 数据库与 migration 收口。OpenAPI 覆盖 P0 用户端、管理端和运行态治理端点；统一响应为 `code/message/data/traceId`，分页为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与 `docs/plan/08-contract-alignment.md` 的契约映射保持一致。
 
-M1 当前状态记录为“已验证并可作为后续阶段输入”。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。下一步可继续 M2 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖后续后端能力。M2 开始前必须把 `deploy/migration/V1__init_schema.sql` 纳入 Git，并按 `docs/superpowers/plans/2026-05-30-m2-migration-closeout.md` 核对标签任务字段、活动 SKU 绑定来源渠道、审计 traceId、试算时间字段映射、可靠事件执行时间和种子数据。
+M2 当前状态记录为“已验证并可作为 M3 输入”。`deploy/migration/V1__init_schema.sql` 已纳入 Git，云服务器 Docker MySQL 8.4 已完成临时空库导入、关键索引检查、种子数据计数和唯一键/非空约束负向验证；临时验证库已删除。`docs/superpowers/plans/2026-05-30-m2-migration-closeout.md` 已更新为执行归档。
 
-阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。
+下一步主线是 M3 后端骨架。阶段边界以 `docs/plan/04-roadmap.md` 为准：M1 不创建后端 Java 模块，M2 不创建 Mapper、Repository 或领域代码，M3 才开始后端工程落地。OpenAPI 是 API 契约事实源，migration 是数据和交易事实源。

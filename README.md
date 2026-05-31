@@ -86,12 +86,14 @@ zhongxiangpin/
 
 ## 当前阶段
 
-当前阶段已完成 M1 契约与模型收口记录。P0 OpenAPI 已覆盖用户端、管理端和运行态治理端点；统一响应固定为 `code/message/data/traceId`，分页固定为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与契约对齐文档中的字段映射保持一致。M1 未创建后端 Java 模块，仍符合“只固定契约、错误码、状态枚举、Mock 示例和字段映射”的阶段边界。
+当前阶段已完成 M1 契约与模型收口，以及 M2 数据库与 migration 收口。P0 OpenAPI 已覆盖用户端、管理端和运行态治理端点；统一响应固定为 `code/message/data/traceId`，分页固定为 `pageNo/pageSize/total/items`；状态枚举和错误码已定义，并与契约对齐文档中的字段映射保持一致。
 
-M1 状态：已验证并可作为后续阶段输入。OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning，不阻塞 M2 migration 验证，也不阻塞 M9 用户端和 M10 管理端基于 Mock 并行启动。仓库仍未落地后端 Maven 工程、前端 Vue 工程和 CI 自动化验证；`deploy/migration/V1__init_schema.sql` 需要在 M2 开始前纳入 Git 并完成空库执行验证。
+M2 状态：`deploy/migration/V1__init_schema.sql` 已纳入 Git，已固定用户、商品、活动、交易、支付、退款、可靠事件、标签、DCC 和审计表；关键唯一键、索引、状态字段、来源渠道快照、标签批次字段、可靠事件执行时间和审计 `traceId` 已与 `docs/plan/08-contract-alignment.md` 对齐。云服务器 Docker MySQL 8.4 已完成临时空库导入、关键索引检查、种子数据计数和唯一键/非空约束负向验证，临时验证库已删除。
+
+仓库仍未落地后端 Maven 工程、前端 Vue 工程和 CI 自动化验证。下一步主线应进入 M3 后端骨架：创建后端 Maven 多模块、统一响应、异常处理、基础配置和健康检查；M9 用户端和 M10 管理端仍可基于 M1 OpenAPI 与 Mock 并行启动，真实联调依赖后续后端能力。
 
 后续进入编码前，以 `docs/README.md` 判断文档阅读路径，以 `docs/plan/06-task-implementation-checklist.md` 作为项目推进主线，按 `docs/sdd/tasks.md` 检查任务就绪门禁，并按 `docs/harness/reference-map.md` 读取旧项目对应行为证据。
 
-阶段边界：M1 固定 OpenAPI、错误码、状态枚举、Mock 示例和字段映射；M2 固定 migration、唯一键、索引和 MySQL 交易事实源；M3 才开始后端 Maven 多模块和基础代码落地。
+阶段边界：M1 已固定 OpenAPI、错误码、状态枚举、Mock 示例和字段映射；M2 已固定 migration、唯一键、索引和 MySQL 交易事实源；M3 才开始后端 Maven 多模块和基础代码落地。
 
 P0 要完成用户端、后端、管理端、运行态治理、验证和发布所需的全部基础功能；P1 只用于承接后续含金量优化、工程增强和生产化提升。

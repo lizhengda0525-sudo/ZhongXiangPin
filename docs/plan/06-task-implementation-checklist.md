@@ -183,13 +183,29 @@
 | 阶段边界 | 本次 M1 收口不创建后端 Java 模块，不修改 migration，符合 M1 只固定契约、错误码、状态枚举、Mock 示例和字段映射的边界。 |
 | 验证说明 | OpenAPI lint 已确认 API description valid，剩余 `localhost` 本地服务地址和健康检查缺少 4XX 响应两个可接受 warning。 |
 | 解锁事项 | M2 可继续做 migration 验证；M9 用户端和 M10 管理端可基于 Mock 并行启动，真实联调仍依赖对应后端能力。 |
-| M2 风险 | `deploy/migration/V1__init_schema.sql` 当前需要纳入 Git；M2 开始前继续核对标签任务字段、活动 SKU 绑定 source/channel 继承关系、审计 `traceId` 是否应强制非空、`calculatedAt/trialTime/trial_time` 映射。 |
+| M2 风险 | 已在 M2 收口中处理：`deploy/migration/V1__init_schema.sql` 已纳入 Git，标签任务字段、活动 SKU 绑定 source/channel、审计 `traceId`、`calculatedAt -> trial_time`、可靠事件执行时间和种子数据均已验证。 |
 
 ## 5. M2 数据库与 migration
 
 ### M2 收口修订计划入口
 
-当前 M2 已完成只读审计，但尚不能标记为收口。待修点、执行顺序、验证方案和停止条件统一记录在 `docs/superpowers/plans/2026-05-30-m2-migration-closeout.md`。下一阶段执行时，先按该计划修订 `deploy/migration/V1__init_schema.sql` 和 `docs/plan/08-contract-alignment.md`，验证通过后再在本文补充 M2 收口记录；验证前不得提前更新 README 为 M2 已完成。
+M2 收口修订已按 `docs/superpowers/plans/2026-05-30-m2-migration-closeout.md` 执行完成。该计划现在作为执行归档，记录修订点、执行顺序、验证方式、停止条件和最终结果；任务事实以本文的 M2 收口记录为准。
+
+### M2 收口记录
+
+| 项目 | 结论 |
+| --- | --- |
+| 当前状态 | M2 数据库与 migration 已验证并可作为 M3 后端骨架输入。 |
+| 覆盖范围 | `deploy/migration/V1__init_schema.sql` 已覆盖用户、商品、活动、活动 SKU 绑定、折扣、标签、队伍、订单、支付、退款、可靠事件、DCC 和管理员审计表。 |
+| 数据事实源 | MySQL 作为交易事实源的边界已落入 migration；Redis 仍只承担缓存、占位和运行态，不作为最终交易事实。 |
+| 唯一键与索引 | 已固定 `source/channel/sku_id` 入口绑定、`user_account_id/client_order_no` 锁单幂等、`team_id/occupy_no` 占位防重复、`event_type/biz_key` 可靠事件幂等、`tag_id/batch_id` 标签批次唯一键和 `trace_id` 审计追踪索引。 |
+| 种子数据 | 已包含 1 个管理员、1 个普通用户、3 个 SKU、2 个活动、2 类折扣、标签主表/任务/明细和 2 条 DCC 配置，满足 M2 最低验收数量。 |
+| 契约对齐 | `docs/plan/08-contract-alignment.md` 已同步 `source/channel`、`tagScope`、`calculatedAt -> trade_order.trial_time`、`tagRule -> crowd_tag_job.rule_expr`、标签任务统计字段、`nextExecuteTime/lastExecuteTime` 和 `traceId -> admin_operation_log.trace_id NOT NULL`。 |
+| Harness 证据 | 旧项目 `MarketMapper.xml`、`TradeMapper.xml`、`TagMapper.xml`、`MarketRepositoryImpl`、`TagRepositoryImpl` 和运行态任务 Mapper 显示 source/channel、标签批次、currentBatchId、nextExecuteTime/lastExecuteTime 是关键持久化事实；新 migration 只抽取行为和约束，不复制旧源码。 |
+| 验证说明 | 已在云服务器 Docker MySQL 8.4 的临时库中完成空库导入、关键索引检查、种子数据计数和唯一键/非空约束负向验证；验证后临时库已删除。 |
+| 阶段边界 | 本次 M2 收口未创建后端 Maven 模块、Mapper、Repository、Controller、Service、领域模型或业务 handler，符合 M2 只固定 migration、唯一键、索引和 MySQL 交易事实源的边界。 |
+| 剩余风险 | 暂未建立 CI 自动化 migration 验证；`tagRule` 仍是 API 字符串并在后续应用层归一化为 JSON；`reliable_event.next_execute_time` 继续保持数据库必填，如果后续要放宽终态事件约束需单独授权。 |
+| 解锁事项 | M3 可开始后端 Maven 多模块、统一响应、异常处理、基础配置和健康检查；M9/M10 仍可基于 M1 OpenAPI 和 Mock 并行启动。 |
 
 ### ZXP-DB-001 设计用户与权限表
 
