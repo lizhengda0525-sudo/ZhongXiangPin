@@ -93,6 +93,17 @@
 | 验证方式 | 手工检查 `AGENTS.md`、`docs/sdd/tasks.md`、README 导航和任务清单均已引用开发规范；检查 `.editorconfig` 和 `.gitattributes` 已存在；后续 CI 建立后补充 P3C、编码检查或等价静态扫描 |
 | 建议提交 | `docs: add project development standards` |
 
+### ZXP-DOC-005 建立 Redis 运行态规范
+
+| 字段 | 内容 |
+| --- | --- |
+| 参考依据 | 新项目规划中 Redis 承担 session、验证码、缓存、Lua 占位、任务锁和运行态巡检；`docs/plan/02-business-design.md` 已明确 Redis 只做缓存和运行态，MySQL 是交易事实源 |
+| 目标落地 | `docs/plan/09-redis-runtime-standard.md`、`README.md`、`docs/README.md`、`docs/plan/02-business-design.md`、`docs/plan/06-task-implementation-checklist.md` |
+| 实现要点 | 新增 Redis 运行态规范文档；明确 Redis 与 MySQL 事实源边界；统一 key 前缀、业务域、敏感信息处理和 TTL；固定验证码、session、会场缓存、标签命中、锁单占位、任务锁和巡检重建的使用规则；明确 Redis 成功 MySQL 失败、MySQL 成功 Redis 失败、Redis 丢失或脏数据时的处理策略；明确 Lua 只用于 Redis 内部原子操作，不替代 MySQL 条件更新和唯一键；把 Redis 规范加入文档导航、文档地图和任务启动检查 |
+| 验收标准 | 后续涉及 Redis session、缓存、Lua、任务锁或运行态巡检的任务，都能先从 Redis 运行态规范确认 key、TTL、一致性和验证边界；本任务不创建后端 Java 模块、Redis 配置类、Lua 脚本或真实运行配置 |
+| 验证方式 | 手工检查 README、docs/README、业务设计和任务清单均已引用 Redis 运行态规范；检查文档未包含敏感连接串或密码；检查 Redis 用途均能映射到 M3 到 M11 的现有任务编号；执行 `git diff --check` |
+| 建议提交 | `docs: add redis runtime standard` |
+
 ## 4. M1 契约、错误码与状态枚举
 
 ### ZXP-CONTRACT-001 完善统一响应契约
@@ -756,7 +767,7 @@
 
 | 顺序 | 任务 | 解锁条件或说明 |
 | --- | --- | --- |
-| 1 | `ZXP-DOC-001` -> `ZXP-DOC-002` -> `ZXP-DOC-003` -> `ZXP-DOC-004` | 先统一文档入口、任务卡、ADR 和开发规范；`ZXP-DOC-004` 必须先进入后续门禁。 |
+| 1 | `ZXP-DOC-001` -> `ZXP-DOC-002` -> `ZXP-DOC-003` -> `ZXP-DOC-004` -> `ZXP-DOC-005` | 先统一文档入口、任务卡、ADR、开发规范和 Redis 运行态规范；`ZXP-DOC-004` 和 `ZXP-DOC-005` 必须先进入后续门禁。 |
 | 2 | `ZXP-GIT-001` -> `ZXP-GIT-002` | 建立分支、提交和 tag 规则，避免后续任务落在不可追溯历史中。 |
 | 3 | `ZXP-CONTRACT-001` -> `ZXP-CONTRACT-002` -> `ZXP-CONTRACT-003` -> `ZXP-CONTRACT-004` -> `ZXP-CONTRACT-005` -> `ZXP-CONTRACT-006` | 先固定统一响应，再补认证、会场、交易、后台治理和枚举错误码；M1 不创建后端 Java 代码。 |
 | 4 | `ZXP-DB-001` -> `ZXP-DB-002` -> `ZXP-DB-003` -> `ZXP-DB-004` -> `ZXP-DB-005` | 在契约字段和枚举稳定后固定 V1 migration；M2 不创建 Mapper、Repository 或领域代码。 |

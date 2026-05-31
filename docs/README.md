@@ -31,7 +31,8 @@ flowchart TB
     openapi --> alignment["08-contract-alignment.md<br/>契约对齐"]
     migration --> alignment
     alignment --> standard["07-development-standard.md<br/>开发规范"]
-    standard --> validation["05-validation.md<br/>验证证据"]
+    standard --> redis["09-redis-runtime-standard.md<br/>Redis 运行态规范"]
+    redis --> validation["05-validation.md<br/>验证证据"]
 ```
 
 ## 3. 文档职责表
@@ -50,6 +51,7 @@ flowchart TB
 | `docs/plan/06-task-implementation-checklist.md` | 任务实施清单，作为唯一任务事实源，定义任务编号、目标、验收标准、完整推进顺序和建议提交。 | 领取任何具体任务前。 | 新增任务、调整范围、记录实际偏差时。 |
 | `docs/plan/07-development-standard.md` | 项目开发规范，定义 Java、注释、编码格式、质量门禁和任务总结要求。 | 后端任务和工程质量相关任务前。 | 规范、注释要求、编码格式或静态扫描策略变化时。 |
 | `docs/plan/08-contract-alignment.md` | 契约对齐规范，统一 OpenAPI、Mock、前端类型和 migration 字段映射。 | 任何影响 API、Mock、前端类型或数据库字段的任务前。 | 接口字段、枚举、状态、表结构或 Mock 策略变化时。 |
+| `docs/plan/09-redis-runtime-standard.md` | Redis 运行态规范，定义 key、TTL、一致性、Lua、部署安全和验证边界。 | 涉及 session、验证码、缓存、锁单占位、任务锁或 Redis/MySQL 巡检时。 | Redis 用途、key 结构、TTL、Lua 规则、安全边界或验证策略变化时。 |
 | `docs/superpowers/plans/*.md` | 阶段性执行计划归档，记录某次收口、修订或实现前的具体步骤、分工、验证方式和停止条件；不作为长期全局事实源。 | 执行复杂任务前；需要按计划交接给 Agent 或人工执行时。 | 执行计划、验证步骤、分工方式或任务状态变化时。 |
 | `docs/plan/openapi.yaml` | API 单一事实源，定义路径、请求、响应、错误码、schema 和示例。 | M1 契约任务、前端接口、Mock、M3 后端 DTO 和联调前。 | 任何 API 或字段契约变化时。 |
 | `docs/harness/README.md` | Harness 执行指南，说明旧项目只读参照规则和证据记录格式。 | 需要查看旧项目行为证据前。 | Harness 使用规则或证据格式变化时。 |
@@ -74,7 +76,8 @@ flowchart TB
 5. 如果影响接口，先更新或确认 `docs/plan/openapi.yaml`。
 6. 如果影响数据，先更新或确认 migration 和 `docs/plan/08-contract-alignment.md`。
 7. 如果是后端任务，确认 `docs/plan/07-development-standard.md` 的注释、编码和质量门禁。
-8. 明确验证方式，至少对应 `docs/plan/05-validation.md` 中的一项证据。
+8. 如果涉及 Redis session、缓存、Lua、任务锁或运行态巡检，确认 `docs/plan/09-redis-runtime-standard.md`。
+9. 明确验证方式，至少对应 `docs/plan/05-validation.md` 中的一项证据。
 
 ## 5. 文档更新规则
 
@@ -82,6 +85,7 @@ flowchart TB
 - API 字段变化：先更新 OpenAPI，再同步 SDD、Mock、前端类型和契约对齐规范。
 - 数据字段变化：更新 migration 或新增下一版 migration，并同步契约对齐规范。
 - 业务规则变化：更新业务设计、对应 SDD 和任务验收标准。
+- Redis 运行态变化：更新 Redis 运行态规范，并按影响范围同步业务设计、后端 SDD、部署文档和验证计划。
 - 架构边界变化：更新架构设计；如属于关键取舍，后续补充 ADR。
 - 验证方式变化：更新验证计划和任务门禁。
 - 发布流程变化：更新 Git 与版本管理文档，以及后续 release note。

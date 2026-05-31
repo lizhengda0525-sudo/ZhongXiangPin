@@ -54,6 +54,7 @@ zhongxiangpin/
 - [任务实施清单](docs/plan/06-task-implementation-checklist.md)
 - [项目开发规范](docs/plan/07-development-standard.md)
 - [契约对齐规范](docs/plan/08-contract-alignment.md)
+- [Redis 运行态规范](docs/plan/09-redis-runtime-standard.md)
 - [执行计划归档](docs/superpowers/plans/)
 - [Harness 执行说明](docs/harness/README.md)
 - [Harness 参考索引](docs/harness/reference-map.md)
