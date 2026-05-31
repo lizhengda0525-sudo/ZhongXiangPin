@@ -37,6 +37,7 @@ application-local.yml
 .project
 .classpath
 .settings/
+.claude/
 
 # OS
 .DS_Store
